@@ -107,18 +107,21 @@
   #popup .k{color:var(--muted)}
   #popup b{font-weight:600}
 
-  #collist{display:none; top:14px; width:240px; padding:0; overflow:hidden}
-  #collist.left{left:14px} #collist.right{right:14px}
-  #collist .ch{display:flex; align-items:center; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); font-weight:600}
-  #collist .ch .x{margin-left:auto; cursor:pointer; color:var(--muted)}
-  #collist .nav{display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:8px 12px; border-bottom:1px solid var(--line)}
-  #collist .nav button{padding:5px}
-  #collist .nav .mid{display:flex; gap:4px} #collist .nav .mid button{flex:1}
-  #collist .rows{max-height:46vh; overflow-y:auto; padding:6px 12px 12px}
-  #collist .r{display:flex; align-items:center; gap:8px; padding:2px 0; font-size:12px}
-  #collist .r .i{width:18px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
-  #collist .r .g{font-family:'Noto Emoji'; font-size:15px; width:18px; text-align:center}
-  #collist .sw{width:15px;height:15px}
+  #collist{display:none; top:14px; right:14px; width:max-content; min-width:228px; max-width:60vw; padding:0; overflow:hidden; --cs:1}
+  #collist .ch{display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line); font-weight:600; cursor:move; user-select:none}
+  #collist .ch .szc{margin-left:auto; display:flex; gap:4px}
+  #collist .ch .szc button{padding:1px 8px; font-size:14px; line-height:1.25}
+  #collist .ch .x{cursor:pointer; color:var(--muted); padding:0 2px; font-size:14px}
+  #collist .dpad{display:grid; grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,32px); gap:5px; justify-content:center; padding:12px; border-bottom:1px solid var(--line)}
+  #collist .dpad button{padding:0; font-size:14px; display:flex; align-items:center; justify-content:center}
+  #collist .dpad .d-up{grid-area:1/2/2/3} #collist .dpad .d-left{grid-area:2/1/3/2}
+  #collist .dpad .d-right{grid-area:2/3/3/4} #collist .dpad .d-down{grid-area:3/2/4/3}
+  #collist .dpad .hub{grid-area:2/2/3/3; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:9px; border:1px dashed var(--line); border-radius:6px; text-transform:uppercase; letter-spacing:.5px}
+  #collist .rows{padding:6px 12px 12px}
+  #collist .r{display:flex; align-items:center; gap:8px; padding:2px 0; font-size:calc(12px*var(--cs)); white-space:nowrap}
+  #collist .r .i{width:calc(20px*var(--cs)); color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
+  #collist .r .g{font-family:'Noto Emoji'; font-size:calc(15px*var(--cs)); width:calc(18px*var(--cs)); text-align:center}
+  #collist .sw{width:calc(15px*var(--cs)); height:calc(15px*var(--cs))}
 
   #mini{position:absolute; left:14px; bottom:14px; padding:8px; z-index:18; display:none}
   #mini canvas{display:block; image-rendering:pixelated; cursor:pointer; border-radius:4px}
@@ -132,10 +135,14 @@
   .kbd{font-family:ui-monospace,monospace; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11px}
 
   /* preferences modal */
-  #overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; display:none; align-items:center; justify-content:center; padding:24px}
+  #overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; display:none; align-items:flex-start; justify-content:center; padding:24px}
   #overlay.show{display:flex}
+  #overlay.collapsed{background:none; pointer-events:none}
+  #overlay.collapsed #modal{pointer-events:auto}
   #modal{background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); width:min(820px,100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden}
-  .mhead{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+  #modal.collapsed{max-height:none}
+  #modal.collapsed .mbody{display:none}
+  .mhead{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; cursor:move; user-select:none}
   .mhead .spacer{flex:1}
   .mhead .msub{color:var(--muted); font-size:11px; font-weight:400; flex-basis:100%; order:5; margin-top:-2px}
   .mbody{overflow-y:auto; padding:8px 10px}
@@ -233,7 +240,6 @@
         <label class="switch"><span class="lbl">■ Highlight flat</span><input type="checkbox" id="hlFlat"><span class="track"></span></label>
         <label class="switch"><span class="lbl">▼ Highlight lowered</span><input type="checkbox" id="hlDown"><span class="track"></span></label>
         <label class="switch"><span class="lbl">Direction symbols (zoom ≥ 12)</span><input type="checkbox" id="showSym"><span class="track"></span></label>
-        <label class="switch"><span class="lbl">Column list on right</span><input type="checkbox" id="listRight" checked><span class="track"></span></label>
         <label class="switch"><span class="lbl">Show minimap / skip-maps</span><input type="checkbox" id="showMini" checked><span class="track"></span></label>
         <div class="row" style="margin-top:10px"><label style="flex:none">Zoom</label><input type="range" id="zoom" min="1" max="32" value="8"></div>
         <button class="sm" id="fitView" style="width:100%">Fit to screen</button>
@@ -276,11 +282,15 @@
     </div>
     <div class="float" id="popup"></div>
     <div class="float" id="collist">
-      <div class="ch"><span id="chTitle">Column</span><span class="x" id="chClose">✕</span></div>
-      <div class="nav">
-        <button data-nav="up">▲ up</button>
-        <div class="mid"><button data-nav="left">◀</button><button data-nav="right">▶</button></div>
-        <button data-nav="down">▼ down</button>
+      <div class="ch" id="colHead"><span id="chTitle">Column</span>
+        <span class="szc"><button id="colMinus" title="Smaller">−</button><button id="colPlus" title="Bigger">+</button></span>
+        <span class="x" id="chClose">✕</span></div>
+      <div class="dpad">
+        <button data-nav="up" class="d-up" title="Up a chunk (↑)">▲</button>
+        <button data-nav="left" class="d-left" title="Left a column (←)">◀</button>
+        <span class="hub">col</span>
+        <button data-nav="right" class="d-right" title="Right a column (→)">▶</button>
+        <button data-nav="down" class="d-down" title="Down a chunk (↓)">▼</button>
       </div>
       <div class="rows" id="chRows"></div>
     </div>
@@ -300,6 +310,7 @@
       <span class="spacer"></span>
       <input type="text" id="prefSearch" placeholder="Filter colours / blocks…" style="width:200px">
       <button class="sm" id="prefResetAll">Reset all</button>
+      <button class="sm" id="prefCollapse" title="Collapse">▾</button>
       <button class="sm" id="prefClose">Done</button>
     </div>
     <div class="mbody" id="prefList"></div>
@@ -438,7 +449,7 @@ const state={
   startX:-26176, startY:6208,
   zoom:8, panX:0, panY:0,
   hlUp:false, hlFlat:false, hlDown:false, showSym:false,
-  listRight:true, showMini:true,
+  showMini:true, colSize:1,
   skip:new Set(),            // "mx,my"
   selected:null,             // {x, y} top-left block of a 16-tall chunk column
 };
@@ -798,11 +809,36 @@ function renderColumn(){
           `<span style="color:${col}">${block}</span></div>`;
   }
   $('chRows').innerHTML=html;
-  collist.className='float '+(state.listRight?'right':'left');
   collist.style.display='block';
 }
 $('chClose').addEventListener('click',()=>{ state.selected=null; collist.style.display='none'; scheduleRender(); });
 collist.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>navColumn(btn.dataset.nav)));
+
+/* column-list window: size controls + draggable */
+function applyColSize(){ collist.style.setProperty('--cs', state.colSize.toFixed(2)); }
+$('colPlus').onclick=()=>{ state.colSize=Math.min(3,+(state.colSize+0.15).toFixed(2)); applyColSize(); };
+$('colMinus').onclick=()=>{ state.colSize=Math.max(0.6,+(state.colSize-0.15).toFixed(2)); applyColSize(); };
+
+function makeDraggable(el, handle){
+  handle.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button,input,select,textarea,.x')) return;
+    const r=el.getBoundingClientRect();
+    el.style.position='fixed'; el.style.margin='0';
+    el.style.left=r.left+'px'; el.style.top=r.top+'px';
+    el.style.right='auto'; el.style.bottom='auto';
+    const ox=e.clientX-r.left, oy=e.clientY-r.top;
+    handle.setPointerCapture(e.pointerId);
+    const mv=ev=>{
+      const w=el.offsetWidth, h=el.offsetHeight;
+      let nx=Math.max(0,Math.min(window.innerWidth-Math.min(w,80), ev.clientX-ox));
+      let ny=Math.max(0,Math.min(window.innerHeight-30, ev.clientY-oy));
+      el.style.left=nx+'px'; el.style.top=ny+'px';
+    };
+    const up=()=>{ handle.releasePointerCapture(e.pointerId); handle.removeEventListener('pointermove',mv); handle.removeEventListener('pointerup',up); };
+    handle.addEventListener('pointermove',mv); handle.addEventListener('pointerup',up);
+  });
+}
+makeDraggable(collist, $('colHead'));
 
 function navColumn(dir){
   if(!state.selected) return;
@@ -900,7 +936,6 @@ bindToggle('hlUp','hlUp',()=>{buildTint();scheduleRender();});
 bindToggle('hlFlat','hlFlat',()=>{buildTint();scheduleRender();});
 bindToggle('hlDown','hlDown',()=>{buildTint();scheduleRender();});
 bindToggle('showSym','showSym',scheduleRender);
-bindToggle('listRight','listRight',renderColumn);
 bindToggle('showMini','showMini',drawMini);
 
 function updateChunk(){
@@ -980,6 +1015,13 @@ function setAllExcl(cid,ex){
 $('prefsBtn').onclick=()=>{ renderPrefs(); $('overlay').classList.add('show'); };
 $('prefClose').onclick=()=>$('overlay').classList.remove('show');
 $('overlay').onclick=e=>{ if(e.target.id==='overlay') $('overlay').classList.remove('show'); };
+$('prefCollapse').onclick=()=>{
+  const collapsed=$('modal').classList.toggle('collapsed');
+  $('overlay').classList.toggle('collapsed', collapsed);
+  $('prefCollapse').textContent=collapsed?'▸':'▾';
+  $('prefCollapse').title=collapsed?'Expand':'Collapse';
+};
+makeDraggable($('modal'), document.querySelector('.mhead'));
 $('prefSearch').oninput=renderPrefs;
 $('prefResetAll').onclick=()=>{ if(confirm('Reset ALL block preferences to defaults?')){ prefs={}; openColors.clear(); prefsChanged(); } };
 $('prefList').addEventListener('click',e=>{
@@ -1003,7 +1045,7 @@ $('expView').onclick=()=>{ if(baseIdx) download(view,'mcmap-view.png'); };
 document.querySelectorAll('.sec[data-sec] > .head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
 
 /* init */
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat();
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize();
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 </script>
