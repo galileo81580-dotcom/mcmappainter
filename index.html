@@ -159,14 +159,18 @@
   .shades span{width:16px; height:22px; display:block}
   .blocks{display:none; padding:6px 10px 10px; border-top:1px solid var(--line)}
   .cclr.open .blocks{display:block}
-  .brow{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; font-size:12px}
+  .brow{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; font-size:12px; border-top:2px solid transparent; border-bottom:2px solid transparent}
   .brow:hover{background:var(--panel2)}
   .brow.excl .bn{text-decoration:line-through; color:var(--muted)}
+  .brow .grip{cursor:grab; color:var(--muted); font-size:13px; line-height:1; padding:0 1px; touch-action:none}
+  .brow .grip:active{cursor:grabbing}
+  .brow.dragging{opacity:.4}
+  .brow.dropbefore{border-top-color:var(--accent)}
+  .brow.dropafter{border-bottom-color:var(--accent)}
   .brow .rank{width:18px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
   .brow .bn{flex:1}
   .brow .tag{font-size:10px; color:var(--good); border:1px solid var(--good); border-radius:8px; padding:0 6px}
   .brow button{padding:2px 7px; font-size:11px; line-height:1.2}
-  .brow .updn{display:flex; gap:3px}
   .cclr .crow{display:flex; gap:8px; padding:6px 6px 2px}
   .cclr .crow button{padding:3px 8px; font-size:11px}
 </style>
@@ -977,11 +981,10 @@ function renderPrefs(){
           `<button data-act="disable" data-cid="${c.id}">Exclude all</button></div>`+
         order.map((b,i)=>{
           const ex=excl.has(b);
-          return `<div class="brow ${ex?'excl':''}"><span class="rank">${i+1}</span>`+
+          return `<div class="brow ${ex?'excl':''}" draggable="true" data-cid="${c.id}" data-b="${b}">`+
+            `<span class="grip" title="Drag to reorder">⠿</span><span class="rank">${i+1}</span>`+
             `<span class="bn">${b}</span>`+
             (b===chosen?`<span class="tag">USING</span>`:'')+
-            `<span class="updn"><button data-mv="up" data-cid="${c.id}" data-b="${b}">↑</button>`+
-            `<button data-mv="dn" data-cid="${c.id}" data-b="${b}">↓</button></span>`+
             `<button data-ex data-cid="${c.id}" data-b="${b}">${ex?'include':'exclude'}</button></div>`;
         }).join('')+
       `</div></div>`;
@@ -997,11 +1000,13 @@ function prefsChanged(){
   if(setChanged) processImage();              // re-dither: available colours changed
   else { updateShop(); renderColumn(); scheduleRender(); }
 }
-function move(cid,b,dir){
-  const c=colorById.get(cid); const order=colorOrder(c);
-  const i=order.indexOf(b), j=dir==='up'?i-1:i+1;
-  if(i<0||j<0||j>=order.length) return;
-  [order[i],order[j]]=[order[j],order[i]];
+function reorderBlock(cid, block, target, after){
+  if(block===target) return;
+  const order=colorOrder(colorById.get(cid));
+  const from=order.indexOf(block); if(from<0) return;
+  order.splice(from,1);
+  let ti=order.indexOf(target); if(ti<0) ti=order.length;
+  order.splice(after?ti+1:ti, 0, block);
   prefs[cid]=Object.assign({},prefs[cid],{order}); prefsChanged();
 }
 function toggleExcl(cid,b){
@@ -1029,11 +1034,41 @@ $('prefList').addEventListener('click',e=>{
   if(t.classList.contains('ch')){ const cid=+t.dataset.toggle, el=t.closest('.cclr');
     el.classList.toggle('open'); el.classList.contains('open')?openColors.add(cid):openColors.delete(cid); return; }
   const cid=+t.dataset.cid;
-  if(t.dataset.mv) return move(cid,t.dataset.b,t.dataset.mv);
   if(t.hasAttribute('data-ex')) return toggleExcl(cid,t.dataset.b);
   if(t.dataset.act==='reset'){ delete prefs[cid]; return prefsChanged(); }
   if(t.dataset.act==='enable') return setAllExcl(cid,false);
   if(t.dataset.act==='disable') return setAllExcl(cid,true);
+});
+
+/* drag-and-drop reordering of block rows */
+let dragRow=null, dragCid=null, dragBlock=null;
+function clearDropMarks(){ $('prefList').querySelectorAll('.dropbefore,.dropafter').forEach(el=>el.classList.remove('dropbefore','dropafter')); }
+$('prefList').addEventListener('dragstart',e=>{
+  const row=e.target.closest('.brow'); if(!row) return;
+  if(e.target.closest('button')){ e.preventDefault(); return; }   // let buttons click normally
+  dragRow=row; dragCid=+row.dataset.cid; dragBlock=row.dataset.b;
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  try{ e.dataTransfer.setData('text/plain',dragBlock); }catch(_){}
+});
+$('prefList').addEventListener('dragend',()=>{ if(dragRow) dragRow.classList.remove('dragging'); clearDropMarks(); dragRow=null; });
+$('prefList').addEventListener('dragover',e=>{
+  if(!dragRow) return;
+  const row=e.target.closest('.brow');
+  if(!row || +row.dataset.cid!==dragCid || row===dragRow){ clearDropMarks(); return; }
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  const r=row.getBoundingClientRect(); const after=(e.clientY-r.top)>r.height/2;
+  clearDropMarks(); row.classList.add(after?'dropafter':'dropbefore');
+});
+$('prefList').addEventListener('drop',e=>{
+  if(!dragRow) return;
+  const row=e.target.closest('.brow');
+  if(!row || +row.dataset.cid!==dragCid){ clearDropMarks(); return; }
+  e.preventDefault();
+  const r=row.getBoundingClientRect(); const after=(e.clientY-r.top)>r.height/2;
+  const cid=dragCid, block=dragBlock, target=row.dataset.b;
+  dragRow=null; clearDropMarks();
+  reorderBlock(cid, block, target, after);
 });
 
 /* export */
