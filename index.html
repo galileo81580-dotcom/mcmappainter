@@ -130,6 +130,38 @@
 
   .pill{display:inline-block; padding:1px 7px; border-radius:10px; background:var(--panel2); font-size:11px; color:var(--muted)}
   .kbd{font-family:ui-monospace,monospace; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11px}
+
+  /* preferences modal */
+  #overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; display:none; align-items:center; justify-content:center; padding:24px}
+  #overlay.show{display:flex}
+  #modal{background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); width:min(820px,100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden}
+  .mhead{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+  .mhead .spacer{flex:1}
+  .mhead .msub{color:var(--muted); font-size:11px; font-weight:400; flex-basis:100%; order:5; margin-top:-2px}
+  .mbody{overflow-y:auto; padding:8px 10px}
+  .mbody::-webkit-scrollbar{width:10px} .mbody::-webkit-scrollbar-thumb{background:#3a404c;border-radius:8px}
+  .cclr{border:1px solid var(--line); border-radius:8px; margin:6px 0; overflow:hidden; background:var(--bg)}
+  .cclr.off{opacity:.55}
+  .cclr > .ch{display:flex; align-items:center; gap:10px; padding:8px 10px; cursor:pointer; user-select:none}
+  .cclr > .ch:hover{background:var(--panel2)}
+  .cclr .name{font-weight:600}
+  .cclr .pref{color:var(--good); font-size:12px}
+  .cclr .pref.none{color:var(--up)}
+  .cclr .meta{color:var(--muted); font-size:11px; margin-left:auto}
+  .shades{display:flex; gap:0; border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,.15)}
+  .shades span{width:16px; height:22px; display:block}
+  .blocks{display:none; padding:6px 10px 10px; border-top:1px solid var(--line)}
+  .cclr.open .blocks{display:block}
+  .brow{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; font-size:12px}
+  .brow:hover{background:var(--panel2)}
+  .brow.excl .bn{text-decoration:line-through; color:var(--muted)}
+  .brow .rank{width:18px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
+  .brow .bn{flex:1}
+  .brow .tag{font-size:10px; color:var(--good); border:1px solid var(--good); border-radius:8px; padding:0 6px}
+  .brow button{padding:2px 7px; font-size:11px; line-height:1.2}
+  .brow .updn{display:flex; gap:3px}
+  .cclr .crow{display:flex; gap:8px; padding:6px 6px 2px}
+  .cclr .crow button{padding:3px 8px; font-size:11px}
 </style>
 </head>
 <body>
@@ -176,13 +208,9 @@
             <option value="none">None (nearest)</option>
           </select>
         </div>
-        <div class="hint">Materials enabled below are the only blocks the matcher may use.</div>
-        <div class="btnrow" style="margin-bottom:6px">
-          <button class="sm" id="matAll">All</button>
-          <button class="sm" id="matNone">None</button>
-          <button class="sm" id="matInvert">Invert</button>
-        </div>
-        <div class="matlist" id="matlist"></div>
+        <div class="hint">Choose which block you'll use for each map colour, in preference order. Disabled colours are excluded from matching.</div>
+        <button class="primary" id="prefsBtn" style="width:100%">Block preferences…</button>
+        <div class="hint" id="prefStat" style="margin-top:8px"></div>
       </div>
     </div>
 
@@ -263,176 +291,89 @@
   </main>
 </div>
 
+<!-- preferences modal -->
+<div id="overlay">
+  <div id="modal">
+    <div class="mhead">
+      <b>Block preferences</b>
+      <span class="msub">Pick your block per map colour, in order. Top non-excluded block is used.</span>
+      <span class="spacer"></span>
+      <input type="text" id="prefSearch" placeholder="Filter colours / blocks…" style="width:200px">
+      <button class="sm" id="prefResetAll">Reset all</button>
+      <button class="sm" id="prefClose">Done</button>
+    </div>
+    <div class="mbody" id="prefList"></div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ---- palette: [hex, r, g, b, placement, material, alternatives] ---- */
-const PALETTE_RAW = /*PALETTE_PLACEHOLDER*/
+const COLORS_RAW = /*COLORS_PLACEHOLDER*/
 [
-["#597D27", 89, 125, 39, "▼", "Grass", "Slime"],
-["#6D9930", 109, 153, 48, "■", "Grass", "Slime"],
-["#7FB238", 127, 178, 56, "▲", "Grass", "Slime"],
-["#AEA473", 174, 164, 115, "▼", "Birch", "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"],
-["#D5C98C", 213, 201, 140, "■", "Birch", "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"],
-["#F7E9A3", 247, 233, 163, "▲", "Birch", "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"],
-["#757575", 117, 117, 117, "▼", "Iron Pressure Plate", "Iron Trap Door, Iron Block"],
-["#909090", 144, 144, 144, "■", "Iron Pressure Plate", "Iron Trap Door, Iron Block"],
-["#A7A7A7", 167, 167, 167, "▲", "Iron Pressure Plate", "Iron Trap Door, Iron Block"],
-["#005700", 0, 87, 0, "▼", "Leaves", ""],
-["#006A00", 0, 106, 0, "■", "Leaves", ""],
-["#007C00", 0, 124, 0, "▲", "Leaves", ""],
-["#737681", 115, 118, 129, "▼", "Clay", ""],
-["#8D909E", 141, 144, 158, "■", "Clay", ""],
-["#A4A8B8", 164, 168, 184, "▲", "Clay", ""],
-["#6A4C36", 106, 76, 54, "▼", "Dirt", "Jungle, Granite, Rooted Dirt, Packed Mud"],
-["#825E42", 130, 94, 66, "■", "Dirt", "Jungle, Granite, Rooted Dirt, Packed Mud"],
-["#976D4D", 151, 109, 77, "▲", "Dirt", "Jungle, Granite, Rooted Dirt, Packed Mud"],
-["#4F4F4F", 79, 79, 79, "▼", "Cobblestone", "Stone, Mossy Cobble, Brics, Andesite,  Gravel"],
-["#606060", 96, 96, 96, "■", "Cobblestone", "Stone, Mossy Cobble, Brics, Andesite,  Gravel"],
-["#707070", 112, 112, 112, "▲", "Cobblestone", "Stone, Mossy Cobble, Brics, Andesite,  Gravel"],
-["#645432", 100, 84, 50, "▼", "Oak", "Crafting Table"],
-["#7B663E", 123, 102, 62, "■", "Oak", "Crafting Table"],
-["#8F7748", 143, 119, 72, "▲", "Oak", "Crafting Table"],
-["#B4B1AC", 180, 177, 172, "▼", "Diorite", "Birch Log, Quartz, Sea Lantern"],
-["#DCD9D3", 220, 217, 211, "■", "Diorite", "Birch Log, Quartz, Sea Lantern"],
-["#FFFCF5", 255, 252, 245, "▲", "Diorite", "Birch Log, Quartz, Sea Lantern"],
-["#B4B4B4", 180, 180, 180, "▼", "White Wool", "White Concrete, Snow "],
-["#DCDCDC", 220, 220, 220, "■", "White Wool", "White Concrete, Snow "],
-["#FFFFFF", 255, 255, 255, "▲", "White Wool", "White Concrete, Snow "],
-["#985924", 152, 89, 36, "▼", "Orange Wool", "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"],
-["#BA6D2C", 186, 109, 44, "■", "Orange Wool", "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"],
-["#D87F33", 216, 127, 51, "▲", "Orange Wool", "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"],
-["#7D3598", 125, 53, 152, "▼", "Magenta Wool", "Magenta Concrete, Magenta Glazed Terracotta, Purpur"],
-["#9941BA", 153, 65, 186, "■", "Magenta Wool", "Magenta Concrete, Magenta Glazed Terracotta, Purpur"],
-["#B24CD8", 178, 76, 216, "▲", "Magenta Wool", "Magenta Concrete, Magenta Glazed Terracotta, Purpur"],
-["#486C98", 72, 108, 152, "▼", "Light Blue Wool", "Light Blue Concrete, Light Blue Glazed Terracotta"],
-["#5884BA", 88, 132, 186, "■", "Light Blue Wool", "Light Blue Concrete, Light Blue Glazed Terracotta"],
-["#6699D8", 102, 153, 216, "▲", "Light Blue Wool", "Light Blue Concrete, Light Blue Glazed Terracotta"],
-["#A1A124", 161, 161, 36, "▼", "Yellow Wool", "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"],
-["#C5C52C", 197, 197, 44, "■", "Yellow Wool", "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"],
-["#E5E533", 229, 229, 51, "▲", "Yellow Wool", "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"],
-["#599011", 89, 144, 17, "▼", "Green Wool", "Green Concrete, Green Glazed Terracotta, Melon"],
-["#6DB015", 109, 176, 21, "■", "Green Wool", "Green Concrete, Green Glazed Terracotta, Melon"],
-["#7FCC19", 127, 204, 25, "▲", "Green Wool", "Green Concrete, Green Glazed Terracotta, Melon"],
-["#AA5974", 170, 89, 116, "▼", "Pink Wool", "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"],
-["#D06D8E", 208, 109, 142, "■", "Pink Wool", "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"],
-["#F27FA5", 242, 127, 165, "▲", "Pink Wool", "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"],
-["#353535", 53, 53, 53, "▼", "Gray Wool", "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"],
-["#414141", 65, 65, 65, "■", "Gray Wool", "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"],
-["#4C4C4C", 76, 76, 76, "▲", "Gray Wool", "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"],
-["#6C6C6C", 108, 108, 108, "▼", "Light Gray Wool", "Light Gray Concrete, Light Gray Glazed Terracotta"],
-["#848484", 132, 132, 132, "■", "Light Gray Wool", "Light Gray Concrete, Light Gray Glazed Terracotta"],
-["#999999", 153, 153, 153, "▲", "Light Gray Wool", "Light Gray Concrete, Light Gray Glazed Terracotta"],
-["#35596C", 53, 89, 108, "▼", "Cyan Wool", "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"],
-["#416D84", 65, 109, 132, "■", "Cyan Wool", "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"],
-["#4C7F99", 76, 127, 153, "▲", "Cyan Wool", "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"],
-["#592C7D", 89, 44, 125, "▼", "Purple Wool", "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"],
-["#6D3699", 109, 54, 153, "■", "Purple Wool", "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"],
-["#7F3FB2", 127, 63, 178, "▲", "Purple Wool", "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"],
-["#24357D", 36, 53, 125, "▼", "Blue Wool", "Blue Concrete, Blue Glazed Terracotta"],
-["#2C4199", 44, 65, 153, "■", "Blue Wool", "Blue Concrete, Blue Glazed Terracotta"],
-["#334CB2", 51, 76, 178, "▲", "Blue Wool", "Blue Concrete, Blue Glazed Terracotta"],
-["#483524", 72, 53, 36, "▼", "Brown Wool", "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"],
-["#58412C", 88, 65, 44, "■", "Brown Wool", "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"],
-["#664C33", 102, 76, 51, "▲", "Brown Wool", "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"],
-["#485924", 72, 89, 36, "▼", "Green Wool", "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"],
-["#586D2C", 88, 109, 44, "■", "Green Wool", "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"],
-["#667F33", 102, 127, 51, "▲", "Green Wool", "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"],
-["#6C2424", 108, 36, 36, "▼", "Red Wool", "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"],
-["#842C2C", 132, 44, 44, "■", "Red Wool", "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"],
-["#993333", 153, 51, 51, "▲", "Red Wool", "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"],
-["#111111", 17, 17, 17, "▼", "Black Wool", "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"],
-["#151515", 21, 21, 21, "■", "Black Wool", "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"],
-["#191919", 25, 25, 25, "▲", "Black Wool", "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"],
-["#B0A836", 176, 168, 54, "▼", "Gold Pressure Plate", "Gold Block, Block of Raw Gold"],
-["#D7CD42", 215, 205, 66, "■", "Gold Pressure Plate", "Gold Block, Block of Raw Gold"],
-["#FAEE4D", 250, 238, 77, "▲", "Gold Pressure Plate", "Gold Block, Block of Raw Gold"],
-["#409A96", 64, 154, 150, "▼", "Prismarine Brick", "Dark Prismarine Brick, Diamond Block, Beacon"],
-["#4FBCB7", 79, 188, 183, "■", "Prismarine Brick", "Dark Prismarine Brick, Diamond Block, Beacon"],
-["#5CDBD5", 92, 219, 213, "▲", "Prismarine Brick", "Dark Prismarine Brick, Diamond Block, Beacon"],
-["#5B3C22", 91, 60, 34, "▼", "Spruce", "Podzol, Mangrove Log"],
-["#6F4A2A", 111, 74, 42, "■", "Spruce", "Podzol, Mangrove Log"],
-["#815631", 129, 86, 49, "▲", "Spruce", "Podzol, Mangrove Log"],
-["#4F0100", 79, 1, 0, "▼", "Netherack", "Nether Brick, Magma Block"],
-["#600100", 96, 1, 0, "■", "Netherack", "Nether Brick, Magma Block"],
-["#700200", 112, 2, 0, "▲", "Netherack", "Nether Brick, Magma Block"],
-["#937C71", 147, 124, 113, "▼", "White Terracotta", "Calcite"],
-["#B4988A", 180, 152, 138, "■", "White Terracotta", "Calcite"],
-["#D1B1A1", 209, 177, 161, "▲", "White Terracotta", "Calcite"],
-["#703919", 112, 57, 25, "▼", "Orange Terracotta", ""],
-["#89461F", 137, 70, 31, "■", "Orange Terracotta", ""],
-["#9F5224", 159, 82, 36, "▲", "Orange Terracotta", ""],
-["#693D4C", 105, 61, 76, "▼", "Magenta Terracotta", ""],
-["#804B5D", 128, 75, 93, "■", "Magenta Terracotta", ""],
-["#95576C", 149, 87, 108, "▲", "Magenta Terracotta", ""],
-["#4F4C61", 79, 76, 97, "▼", "Light Blue Terracotta", ""],
-["#605D77", 96, 93, 119, "■", "Light Blue Terracotta", ""],
-["#706C8A", 112, 108, 138, "▲", "Light Blue Terracotta", ""],
-["#835D19", 131, 93, 25, "▼", "Yellow Terracotta", ""],
-["#A0721F", 160, 114, 31, "■", "Yellow Terracotta", ""],
-["#BA8524", 186, 133, 36, "▲", "Yellow Terracotta", ""],
-["#485225", 72, 82, 37, "▼", "Lime Terracotta", ""],
-["#58642D", 88, 100, 45, "■", "Lime Terracotta", ""],
-["#677535", 103, 117, 53, "▲", "Lime Terracotta", ""],
-["#703637", 112, 54, 55, "▼", "Pink Terracotta", ""],
-["#8A4243", 138, 66, 67, "■", "Pink Terracotta", ""],
-["#A04D4E", 160, 77, 78, "▲", "Pink Terracotta", ""],
-["#281C18", 40, 28, 24, "▼", "Gray Terracotta", "Tuff"],
-["#31231E", 49, 35, 30, "■", "Gray Terracotta", "Tuff"],
-["#392923", 57, 41, 35, "▲", "Gray Terracotta", "Tuff"],
-["#5F4B45", 95, 75, 69, "▼", "Light Gray Terracotta", "Mud Bricks, Exposed Copper"],
-["#745C54", 116, 92, 84, "■", "Light Gray Terracotta", "Mud Bricks, Exposed Copper"],
-["#876B62", 135, 107, 98, "▲", "Light Gray Terracotta", "Mud Bricks, Exposed Copper"],
-["#3D4040", 61, 64, 64, "▼", "Cyan Terracotta", "Mud"],
-["#4B4F4F", 75, 79, 79, "■", "Cyan Terracotta", "Mud"],
-["#575C5C", 87, 92, 92, "▲", "Cyan Terracotta", "Mud"],
-["#56333E", 86, 51, 62, "▼", "Purple Terracotta", ""],
-["#693E4B", 105, 62, 75, "■", "Purple Terracotta", ""],
-["#7A4958", 122, 73, 88, "▲", "Purple Terracotta", ""],
-["#352B40", 53, 43, 64, "▼", "Blue Terracotta", ""],
-["#41354F", 65, 53, 79, "■", "Blue Terracotta", ""],
-["#4C3E5C", 76, 62, 92, "▲", "Blue Terracotta", ""],
-["#352318", 53, 35, 24, "▼", "Brown Terracotta", "Dripstone"],
-["#412B1E", 65, 43, 30, "■", "Brown Terracotta", "Dripstone"],
-["#4C3223", 76, 50, 35, "▲", "Brown Terracotta", "Dripstone"],
-["#35391D", 53, 57, 29, "▼", "Green Terracotta", ""],
-["#414624", 65, 70, 36, "■", "Green Terracotta", ""],
-["#4C522A", 76, 82, 42, "▲", "Green Terracotta", ""],
-["#642A20", 100, 42, 32, "▼", "Red Teracotta", ""],
-["#7A3327", 122, 51, 39, "■", "Red Teracotta", ""],
-["#8E3C2E", 142, 60, 46, "▲", "Red Teracotta", ""],
-["#1A0F0B", 26, 15, 11, "▼", "Black Terracotta", ""],
-["#1F120D", 31, 18, 13, "■", "Black Terracotta", ""],
-["#251610", 37, 22, 16, "▲", "Black Terracotta", ""],
-["#852122", 133, 33, 34, "▼", "Crimson Nylium", ""],
-["#A3292A", 163, 41, 42, "■", "Crimson Nylium", ""],
-["#BD3031", 189, 48, 49, "▲", "Crimson Nylium", ""],
-["#682C44", 104, 44, 68, "▼", "Crimson Wood", ""],
-["#7F3653", 127, 54, 83, "■", "Crimson Wood", ""],
-["#943F61", 148, 63, 97, "▲", "Crimson Wood", ""],
-["#401114", 64, 17, 20, "▼", "Crimson Log (Hyphae)", ""],
-["#4F1519", 79, 21, 25, "■", "Crimson Log (Hyphae)", ""],
-["#5C191D", 92, 25, 29, "▲", "Crimson Log (Hyphae)", ""],
-["#0F585E", 15, 88, 94, "▼", "Warped Nylium", "Oxidized Copper"],
-["#126C73", 18, 108, 115, "■", "Warped Nylium", "Oxidized Copper"],
-["#167E86", 22, 126, 134, "▲", "Warped Nylium", "Oxidized Copper"],
-["#286462", 40, 100, 98, "▼", "Warped Wood", "Weathered Copper"],
-["#327A78", 50, 122, 120, "■", "Warped Wood", "Weathered Copper"],
-["#3A8E8C", 58, 142, 140, "▲", "Warped Wood", "Weathered Copper"],
-["#3C1F2B", 60, 31, 43, "▼", "Warped Log (Hyphae)", ""],
-["#4A2535", 74, 37, 53, "■", "Warped Log (Hyphae)", ""],
-["#562C3E", 86, 44, 62, "▲", "Warped Log (Hyphae)", ""],
-["#0E7F5D", 14, 127, 93, "▼", "Warped Wart Block", ""],
-["#119B72", 17, 155, 114, "■", "Warped Wart Block", ""],
-["#14B485", 20, 180, 133, "▲", "Warped Wart Block", ""],
-["#464646", 70, 70, 70, "▼", "Deepslate", ""],
-["#565656", 86, 86, 86, "■", "Deepslate", ""],
-["#646464", 100, 100, 100, "▲", "Deepslate", ""],
-["#597569", 89, 117, 105, "▼", "Verdant Froglight", "Glow LIchen"],
-["#6D9081", 109, 144, 129, "■", "Verdant Froglight", "Glow LIchen"],
-["#7FA796", 127, 167, 150, "▲", "Verdant Froglight", "Glow LIchen"]
-];
+{"id":1,"name":"Grass","rgb":[127,178,56],"blocks":["Grass Block","Slime Block"]},
+{"id":2,"name":"Sand","rgb":[247,233,163],"blocks":["Birch Planks","Birch Wood","Birch Log","Stripped Birch Log","Stripped Birch Wood","Sandstone","Smooth Sandstone","Cut Sandstone","Chiseled Sandstone","End Stone","End Stone Bricks","Bone Block","Glowstone","Sand"]},
+{"id":3,"name":"Wool","rgb":[199,199,199],"blocks":["Mushroom Stem"]},
+{"id":4,"name":"Fire","rgb":[255,0,0],"blocks":["Block of Redstone","TNT"]},
+{"id":5,"name":"Ice","rgb":[160,160,255],"blocks":["Packed Ice","Blue Ice","Ice"]},
+{"id":6,"name":"Iron","rgb":[167,167,167],"blocks":["Block of Iron"]},
+{"id":7,"name":"Plant","rgb":[0,124,0],"blocks":["Cactus"]},
+{"id":8,"name":"Snow","rgb":[255,255,255],"blocks":["White Wool","White Concrete","Snow Block","White Concrete Powder"]},
+{"id":9,"name":"Clay","rgb":[164,168,184],"blocks":["Clay"]},
+{"id":10,"name":"Dirt","rgb":[151,109,77],"blocks":["Dirt","Coarse Dirt","Rooted Dirt","Packed Mud","Granite","Polished Granite","Jungle Planks","Jungle Wood","Jungle Log","Stripped Jungle Log","Stripped Jungle Wood","Brown Mushroom Block"]},
+{"id":11,"name":"Stone","rgb":[112,112,112],"blocks":["Cobblestone","Stone","Smooth Stone","Andesite","Polished Andesite","Mossy Cobblestone","Stone Bricks","Mossy Stone Bricks","Cracked Stone Bricks","Chiseled Stone Bricks","Bedrock","Gravel"]},
+{"id":12,"name":"Water","rgb":[64,64,255],"blocks":["Water"]},
+{"id":13,"name":"Oak Wood","rgb":[143,119,72],"blocks":["Oak Planks","Oak Wood","Oak Log","Stripped Oak Log","Stripped Oak Wood","Note Block","Bookshelf","Crafting Table"]},
+{"id":14,"name":"Quartz","rgb":[255,252,245],"blocks":["Diorite","Polished Diorite","Block of Quartz","Smooth Quartz","Chiseled Quartz Block","Sea Lantern","Birch Log","Pale Oak Planks","Pale Oak Log","Stripped Pale Oak Log","Stripped Pale Oak Wood"]},
+{"id":15,"name":"Orange","rgb":[216,127,51],"blocks":["Orange Wool","Orange Concrete","Orange Terracotta","Acacia Planks","Acacia Log","Stripped Acacia Log","Pumpkin","Carved Pumpkin","Block of Copper","Honeycomb Block","Honey Block","Block of Raw Copper","Red Sand","Orange Concrete Powder"]},
+{"id":16,"name":"Magenta","rgb":[178,76,216],"blocks":["Magenta Wool","Magenta Concrete","Purpur Block","Purpur Pillar","Magenta Terracotta","Magenta Concrete Powder"]},
+{"id":17,"name":"Light Blue","rgb":[102,153,216],"blocks":["Light Blue Wool","Light Blue Concrete","Light Blue Terracotta","Light Blue Concrete Powder"]},
+{"id":18,"name":"Yellow","rgb":[229,229,51],"blocks":["Yellow Wool","Yellow Concrete","Hay Bale","Sponge","Wet Sponge","Bamboo Planks","Bamboo Mosaic","Yellow Terracotta","Yellow Concrete Powder"]},
+{"id":19,"name":"Lime","rgb":[127,204,25],"blocks":["Lime Wool","Lime Concrete","Melon","Lime Terracotta","Lime Concrete Powder"]},
+{"id":20,"name":"Pink","rgb":[242,127,165],"blocks":["Pink Wool","Pink Concrete","Pearlescent Froglight","Pink Terracotta","Pink Concrete Powder"]},
+{"id":21,"name":"Gray","rgb":[76,76,76],"blocks":["Gray Wool","Gray Concrete","Acacia Wood","Stripped Acacia Wood","Gray Terracotta","Gray Concrete Powder"]},
+{"id":22,"name":"Light Gray","rgb":[153,153,153],"blocks":["Light Gray Wool","Light Gray Concrete","Pale Moss Block","Light Gray Terracotta","Light Gray Concrete Powder"]},
+{"id":23,"name":"Cyan","rgb":[76,127,153],"blocks":["Cyan Wool","Cyan Concrete","Prismarine","Cyan Terracotta","Cyan Concrete Powder"]},
+{"id":24,"name":"Purple","rgb":[127,63,178],"blocks":["Purple Wool","Purple Concrete","Mycelium","Amethyst Block","Budding Amethyst","Purple Terracotta","Purple Concrete Powder"]},
+{"id":25,"name":"Blue","rgb":[51,76,178],"blocks":["Blue Wool","Blue Concrete","Blue Terracotta","Blue Concrete Powder"]},
+{"id":26,"name":"Brown","rgb":[102,76,51],"blocks":["Brown Wool","Brown Concrete","Dark Oak Planks","Dark Oak Wood","Dark Oak Log","Stripped Dark Oak Log","Stripped Dark Oak Wood","Soul Sand","Soul Soil","Brown Terracotta","Brown Concrete Powder"]},
+{"id":27,"name":"Green","rgb":[102,127,51],"blocks":["Green Wool","Green Concrete","Moss Block","Dried Kelp Block","Green Terracotta","Green Concrete Powder"]},
+{"id":28,"name":"Red","rgb":[153,51,51],"blocks":["Red Wool","Red Concrete","Bricks","Nether Wart Block","Shroomlight","Red Mushroom Block","Mangrove Planks","Mangrove Wood","Mangrove Log","Stripped Mangrove Log","Stripped Mangrove Wood","Red Terracotta","Red Concrete Powder"]},
+{"id":29,"name":"Black","rgb":[25,25,25],"blocks":["Black Wool","Black Concrete","Block of Coal","Obsidian","Blackstone","Polished Blackstone","Basalt","Polished Basalt","Smooth Basalt","Block of Netherite","Crying Obsidian","Sculk","Black Terracotta","Black Concrete Powder"]},
+{"id":30,"name":"Gold","rgb":[250,238,77],"blocks":["Block of Gold","Block of Raw Gold"]},
+{"id":31,"name":"Diamond","rgb":[92,219,213],"blocks":["Prismarine Bricks","Dark Prismarine","Block of Diamond"]},
+{"id":32,"name":"Lapis","rgb":[74,128,255],"blocks":["Block of Lapis Lazuli"]},
+{"id":33,"name":"Emerald","rgb":[0,217,58],"blocks":["Block of Emerald"]},
+{"id":34,"name":"Podzol","rgb":[129,86,49],"blocks":["Podzol","Spruce Planks","Spruce Wood","Spruce Log","Stripped Spruce Log","Stripped Spruce Wood","Mangrove Roots","Muddy Mangrove Roots"]},
+{"id":35,"name":"Netherrack","rgb":[112,2,0],"blocks":["Netherrack","Nether Bricks","Chiseled Nether Bricks","Cracked Nether Bricks","Red Nether Bricks","Magma Block","Nether Gold Ore","Nether Quartz Ore"]},
+{"id":36,"name":"White Terracotta","rgb":[209,177,161],"blocks":["White Terracotta","Calcite","Cherry Planks","Cherry Log","Stripped Cherry Log"]},
+{"id":37,"name":"Orange Terracotta","rgb":[159,82,36],"blocks":["Orange Terracotta","Block of Resin","Resin Bricks","Chiseled Resin Bricks"]},
+{"id":38,"name":"Magenta Terracotta","rgb":[149,87,108],"blocks":["Magenta Terracotta"]},
+{"id":39,"name":"Light Blue Terracotta","rgb":[112,108,138],"blocks":["Light Blue Terracotta"]},
+{"id":40,"name":"Yellow Terracotta","rgb":[186,133,36],"blocks":["Yellow Terracotta"]},
+{"id":41,"name":"Lime Terracotta","rgb":[103,117,53],"blocks":["Lime Terracotta"]},
+{"id":42,"name":"Pink Terracotta","rgb":[160,77,78],"blocks":["Pink Terracotta","Stripped Cherry Wood"]},
+{"id":43,"name":"Gray Terracotta","rgb":[57,41,35],"blocks":["Gray Terracotta","Cherry Log","Cherry Wood","Tuff","Polished Tuff","Tuff Bricks","Chiseled Tuff"]},
+{"id":44,"name":"Light Gray Terracotta","rgb":[135,107,98],"blocks":["Light Gray Terracotta","Mud Bricks","Exposed Copper"]},
+{"id":45,"name":"Cyan Terracotta","rgb":[87,92,92],"blocks":["Cyan Terracotta","Mud"]},
+{"id":46,"name":"Purple Terracotta","rgb":[122,73,88],"blocks":["Purple Terracotta"]},
+{"id":47,"name":"Blue Terracotta","rgb":[76,62,92],"blocks":["Blue Terracotta"]},
+{"id":48,"name":"Brown Terracotta","rgb":[76,50,35],"blocks":["Brown Terracotta","Dripstone Block"]},
+{"id":49,"name":"Green Terracotta","rgb":[76,82,42],"blocks":["Green Terracotta"]},
+{"id":50,"name":"Red Terracotta","rgb":[142,60,46],"blocks":["Red Terracotta"]},
+{"id":51,"name":"Black Terracotta","rgb":[37,22,16],"blocks":["Black Terracotta"]},
+{"id":52,"name":"Crimson Nylium","rgb":[189,48,49],"blocks":["Crimson Nylium"]},
+{"id":53,"name":"Crimson Stem","rgb":[148,63,97],"blocks":["Crimson Planks","Crimson Stem","Stripped Crimson Stem"]},
+{"id":54,"name":"Crimson Hyphae","rgb":[92,25,29],"blocks":["Crimson Hyphae","Stripped Crimson Hyphae"]},
+{"id":55,"name":"Warped Nylium","rgb":[22,126,134],"blocks":["Warped Nylium","Oxidized Copper"]},
+{"id":56,"name":"Warped Stem","rgb":[58,142,140],"blocks":["Warped Planks","Warped Stem","Stripped Warped Stem","Weathered Copper"]},
+{"id":57,"name":"Warped Hyphae","rgb":[86,44,62],"blocks":["Warped Hyphae","Stripped Warped Hyphae"]},
+{"id":58,"name":"Warped Wart Block","rgb":[20,180,133],"blocks":["Warped Wart Block"]},
+{"id":59,"name":"Deepslate","rgb":[100,100,100],"blocks":["Deepslate","Cobbled Deepslate","Polished Deepslate","Deepslate Bricks","Cracked Deepslate Bricks","Deepslate Tiles","Cracked Deepslate Tiles","Chiseled Deepslate","Reinforced Deepslate"]},
+{"id":60,"name":"Raw Iron","rgb":[216,175,147],"blocks":["Block of Raw Iron"]},
+{"id":61,"name":"Glow Lichen","rgb":[127,167,150],"blocks":["Verdant Froglight"]}
+]; // [{id,name,rgb:[r,g,b],blocks:[...]}]
 
-/* ===== palette setup ===== */
 function rgb2lab(r,g,b){
   r/=255; g/=255; b/=255;
   r = r>0.04045 ? Math.pow((r+0.055)/1.055,2.4) : r/12.92;
@@ -446,18 +387,48 @@ function rgb2lab(r,g,b){
   z = z>0.008856 ? Math.cbrt(z) : (7.787*z+16/116);
   return [116*y-16, 500*(x-y), 200*(y-z)];
 }
-const P = PALETTE_RAW.map(e=>{
-  const [hex,r,g,b,place,mat,alt]=e;
-  const lab=rgb2lab(r,g,b);
-  return {hex,r,g,b,place,mat,alt,L:lab[0],A:lab[1],B:lab[2]};
-});
-// dedupe identical hex (keep first)
-const seenHex=new Set(); const PUNIQ=[];
-for(const p of P){ if(!seenHex.has(p.hex)){seenHex.add(p.hex); PUNIQ.push(p);} }
-P.length=0; PUNIQ.forEach(p=>P.push(p));
 
-const MATERIALS=[...new Set(P.map(p=>p.mat))].sort();
-const matEnabled=new Map(MATERIALS.map(m=>[m,true]));
+const SHADES=[{key:'▼',mul:180},{key:'■',mul:220},{key:'▲',mul:255}];
+const PLACE_NAME={'▲':'raised','■':'flat','▼':'lowered'};
+
+// build colours + flat palette entries (one per colour × shade)
+const COLORS = COLORS_RAW.map(c=>{
+  const shades=SHADES.map(s=>{
+    const r=Math.floor(c.rgb[0]*s.mul/255), g=Math.floor(c.rgb[1]*s.mul/255), b=Math.floor(c.rgb[2]*s.mul/255);
+    const hex='#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    const lab=rgb2lab(r,g,b);
+    return {place:s.key,r,g,b,hex,L:lab[0],A:lab[1],B:lab[2]};
+  });
+  return {id:c.id,name:c.name,blocks:c.blocks.slice(),shades};
+});
+const colorById=new Map(COLORS.map(c=>[c.id,c]));
+const P=[];
+for(const c of COLORS) for(const s of c.shades) P.push({colorId:c.id,place:s.place,r:s.r,g:s.g,b:s.b,hex:s.hex,L:s.L,A:s.A,B:s.B});
+
+// ===== preferences (persisted) =====
+const PREF_KEY='mcmp_prefs_v1';
+let prefs=loadPrefs();
+function loadPrefs(){ try{ const p=JSON.parse(localStorage.getItem(PREF_KEY)); if(p&&typeof p==='object') return p; }catch(e){} return {}; }
+function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }catch(e){} }
+function colorOrder(c){
+  const pr=prefs[c.id];
+  if(!pr||!pr.order) return c.blocks.slice();
+  const set=new Set(c.blocks);
+  const ord=pr.order.filter(b=>set.has(b));
+  for(const b of c.blocks) if(!ord.includes(b)) ord.push(b);
+  return ord;
+}
+function colorExcluded(c){ const pr=prefs[c.id]; return new Set(pr&&pr.excl?pr.excl:[]); }
+function chosenBlock(cid){
+  const c=colorById.get(cid); if(!c) return null;
+  const excl=colorExcluded(c);
+  for(const b of colorOrder(c)) if(!excl.has(b)) return b;
+  return null;
+}
+function colorEnabled(cid){ return chosenBlock(cid)!==null; }
+let enabledColorSet=new Set();
+function recomputeEnabled(){ enabledColorSet=new Set(COLORS.filter(c=>colorEnabled(c.id)).map(c=>c.id)); }
+function anyColorEnabled(){ recomputeEnabled(); return enabledColorSet.size>0; }
 const GLYPH={ '▲':'▲','■':'■','▼':'▼' };
 
 /* ===== state ===== */
@@ -492,7 +463,7 @@ function nearestIndex(r,g,b){
   let best=-1, bd=Infinity;
   for(let i=0;i<P.length;i++){
     const p=P[i];
-    if(!matEnabled.get(p.mat)) continue;
+    if(!enabledColorSet.has(p.colorId)) continue;
     const dl=L-p.L, da=A-p.A, db=B-p.B;
     const d=dl*dl+da*da+db*db;
     if(d<bd){bd=d; best=i;}
@@ -500,7 +471,6 @@ function nearestIndex(r,g,b){
   nearestCache.set(key,best);
   return best;
 }
-function anyMaterialEnabled(){ for(const v of matEnabled.values()) if(v) return true; return false; }
 
 const BAYER4=[ [0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5] ];
 
@@ -514,13 +484,13 @@ function fitRect(sw,sh,dw,dh,mode){
 }
 
 function processImage(){
-  nearestCache.clear();
+  nearestCache.clear(); recomputeEnabled();
   state.blocksW=state.mapsW*128; state.blocksH=state.mapsH*128;
   const W=state.blocksW, H=state.blocksH;
   baseCanvas.width=W; baseCanvas.height=H;
   tintCanvas.width=W; tintCanvas.height=H;
 
-  if(!srcImage || !anyMaterialEnabled()){ baseIdx=null; buildTint(); updateShop(); scheduleRender(); return; }
+  if(!srcImage || enabledColorSet.size===0){ baseIdx=null; buildTint(); updateShop(); scheduleRender(); return; }
 
   const tmp=document.createElement('canvas'); tmp.width=W; tmp.height=H;
   const tctx=tmp.getContext('2d',{willReadFrequently:true});
@@ -711,23 +681,25 @@ function updateShop(){
   const box=$('shop');
   if(!baseIdx){ box.innerHTML='<div class="hint">Load an image.</div>'; return; }
   const W=state.blocksW;
-  const counts=new Map(); let total=0;
+  const counts=new Map(); let total=0;   // keyed by colorId
   for(let i=0;i<baseIdx.length;i++){
     const pi=baseIdx[i]; if(pi<0) continue;
     const x=i%W, y=(i/W)|0;
     if(state.skip.has(((x/128)|0)+','+((y/128)|0))) continue;
-    const mat=P[pi].mat;
-    counts.set(mat,(counts.get(mat)||0)+1); total++;
+    const cid=P[pi].colorId;
+    counts.set(cid,(counts.get(cid)||0)+1); total++;
   }
   const arr=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
   if(!arr.length){ box.innerHTML='<div class="hint">All maps skipped.</div>'; return; }
   let html='';
-  for(const [mat,n] of arr){
-    const p=P.find(p=>p.mat===mat);
-    html+=`<div class="item"><span class="sw" style="background:${p.hex}"></span><span class="n">${mat}</span><span class="c">${n.toLocaleString()}</span></div>`;
+  for(const [cid,n] of arr){
+    const c=colorById.get(cid); const block=chosenBlock(cid)||c.name;
+    html+=`<div class="item"><span class="sw" style="background:${c.shades[1].hex}"></span>`+
+          `<span class="n">${block}<br><span class="k" style="font-size:10px">${c.name}</span></span>`+
+          `<span class="c">${n.toLocaleString()}</span></div>`;
   }
   const stacks=Math.ceil(total/64);
-  html+=`<div class="tot"><b>${total.toLocaleString()}</b> blocks · ~${stacks.toLocaleString()} stacks · ${arr.length} materials</div>`;
+  html+=`<div class="tot"><b>${total.toLocaleString()}</b> blocks · ~${stacks.toLocaleString()} stacks · ${arr.length} colours</div>`;
   box.innerHTML=html;
 }
 
@@ -781,13 +753,15 @@ view.addEventListener('wheel',e=>{
 function showPopup(e,bx,by){
   const pi=baseIdx[by*state.blocksW+bx]; if(pi<0){ popup.style.display='none'; return; }
   const p=P[pi];
+  const cid=p.colorId, c=colorById.get(cid), block=chosenBlock(cid)||'(disabled)';
   const gx=bx+state.startX, gy=by+state.startY;
   const cx=chunkId(gx), cy=chunkId(gy);
   popup.innerHTML=
-    `<div><span class="glyph" style="color:${p.hex}">${p.place}</span><b>${p.mat}</b></div>`+
+    `<div><span class="glyph" style="color:${p.hex}">${p.place}</span><b>${block}</b></div>`+
+    `<div class="k">${c.name} · ${PLACE_NAME[p.place]}</div>`+
     `<div class="k">block (${bx}, ${by}) · world [${gx}, ${gy}]</div>`+
     `<div class="k">chunk (${cx}, ${cy}) · in-chunk [${gx-cx*16}, ${gy-cy*16}]</div>`+
-    (p.alt?`<div style="margin-top:5px"><span class="k">alt:</span> ${p.alt}</div>`:'');
+    altsHtml(cid);
   popup.style.borderColor=p.hex;
   const r=main.getBoundingClientRect();
   let lx=e.clientX-r.left+14, ly=e.clientY-r.top+14;
@@ -817,11 +791,11 @@ function renderColumn(){
     const yy=y+r; if(yy>=state.blocksH) break;
     const pi=baseIdx[yy*W+x];
     if(pi<0){ html+=`<div class="r"><span class="i">${r}</span><span class="g"></span><span class="k">—</span></div>`; continue; }
-    const p=P[pi];
+    const p=P[pi]; const block=chosenBlock(p.colorId)||colorById.get(p.colorId).name;
     const col = p.place==='▲' ? 'var(--up)' : 'var(--txt)';
     html+=`<div class="r"><span class="i">${r}</span><span class="sw" style="background:${p.hex}"></span>`+
           `<span class="g" style="color:${p.hex}">${p.place}</span>`+
-          `<span style="color:${col}">${p.mat}</span></div>`;
+          `<span style="color:${col}">${block}</span></div>`;
   }
   $('chRows').innerHTML=html;
   collist.className='float '+(state.listRight?'right':'left');
@@ -925,20 +899,91 @@ function updateChunk(){
   $('chunkInfo').innerHTML=`Top-left chunk: <b>(${cx}, ${cy})</b>`;
 }
 
-/* materials UI */
-function buildMatList(){
-  const box=$('matlist'); let html='';
-  for(const m of MATERIALS){
-    const p=P.find(p=>p.mat===m);
-    html+=`<label><input type="checkbox" data-mat="${m}" ${matEnabled.get(m)?'checked':''}>`+
-          `<span class="sw" style="background:${p.hex}"></span>${m}</label>`;
-  }
-  box.innerHTML=html;
-  box.querySelectorAll('input').forEach(c=>c.onchange=()=>{ matEnabled.set(c.dataset.mat,c.checked); processImage(); });
+/* ===== alternatives display ===== */
+function altsHtml(cid){
+  const c=colorById.get(cid); const excl=colorExcluded(c); const chosen=chosenBlock(cid);
+  const others=colorOrder(c).filter(b=>b!==chosen);
+  if(!others.length) return '';
+  const items=others.map(b=>excl.has(b)?`<s class="k">${b}</s>`:b).join(', ');
+  return `<div style="margin-top:5px"><span class="k">alts:</span> ${items}</div>`;
 }
-$('matAll').onclick=()=>{ MATERIALS.forEach(m=>matEnabled.set(m,true)); buildMatList(); processImage(); };
-$('matNone').onclick=()=>{ MATERIALS.forEach(m=>matEnabled.set(m,false)); buildMatList(); processImage(); };
-$('matInvert').onclick=()=>{ MATERIALS.forEach(m=>matEnabled.set(m,!matEnabled.get(m))); buildMatList(); processImage(); };
+
+/* ===== block preferences modal ===== */
+const openColors=new Set();
+function updatePrefStat(){
+  recomputeEnabled();
+  $('prefStat').innerHTML=`<b>${enabledColorSet.size}</b> / ${COLORS.length} colours enabled`;
+}
+function renderPrefs(){
+  const q=($('prefSearch').value||'').toLowerCase();
+  const box=$('prefList'); let html='';
+  for(const c of COLORS){
+    const hay=(c.name+' '+c.blocks.join(' ')).toLowerCase();
+    if(q && !hay.includes(q)) continue;
+    const order=colorOrder(c), excl=colorExcluded(c), chosen=chosenBlock(c.id);
+    html+=`<div class="cclr ${chosen?'':'off'} ${openColors.has(c.id)?'open':''}" data-cid="${c.id}">`+
+      `<div class="ch" data-toggle="${c.id}">`+
+        `<span class="shades">${c.shades.map(s=>`<span style="background:${s.hex}"></span>`).join('')}</span>`+
+        `<span class="name">${c.name}</span>`+
+        `<span class="pref ${chosen?'':'none'}">${chosen?('▶ '+chosen):'disabled'}</span>`+
+        `<span class="meta">${order.length-excl.size}/${order.length} usable</span>`+
+      `</div><div class="blocks">`+
+        `<div class="crow"><button data-act="reset" data-cid="${c.id}">Reset</button>`+
+          `<button data-act="enable" data-cid="${c.id}">Include all</button>`+
+          `<button data-act="disable" data-cid="${c.id}">Exclude all</button></div>`+
+        order.map((b,i)=>{
+          const ex=excl.has(b);
+          return `<div class="brow ${ex?'excl':''}"><span class="rank">${i+1}</span>`+
+            `<span class="bn">${b}</span>`+
+            (b===chosen?`<span class="tag">USING</span>`:'')+
+            `<span class="updn"><button data-mv="up" data-cid="${c.id}" data-b="${b}">↑</button>`+
+            `<button data-mv="dn" data-cid="${c.id}" data-b="${b}">↓</button></span>`+
+            `<button data-ex data-cid="${c.id}" data-b="${b}">${ex?'include':'exclude'}</button></div>`;
+        }).join('')+
+      `</div></div>`;
+  }
+  box.innerHTML=html||'<div class="hint" style="padding:20px">No colours match.</div>';
+}
+function prefsChanged(){
+  savePrefs();
+  const before=enabledColorSet; recomputeEnabled();
+  let setChanged = before.size!==enabledColorSet.size;
+  if(!setChanged) for(const id of enabledColorSet){ if(!before.has(id)){setChanged=true;break;} }
+  updatePrefStat(); renderPrefs();
+  if(setChanged) processImage();              // re-dither: available colours changed
+  else { updateShop(); renderColumn(); scheduleRender(); }
+}
+function move(cid,b,dir){
+  const c=colorById.get(cid); const order=colorOrder(c);
+  const i=order.indexOf(b), j=dir==='up'?i-1:i+1;
+  if(i<0||j<0||j>=order.length) return;
+  [order[i],order[j]]=[order[j],order[i]];
+  prefs[cid]=Object.assign({},prefs[cid],{order}); prefsChanged();
+}
+function toggleExcl(cid,b){
+  const excl=colorExcluded(colorById.get(cid));
+  excl.has(b)?excl.delete(b):excl.add(b);
+  prefs[cid]=Object.assign({},prefs[cid],{excl:[...excl]}); prefsChanged();
+}
+function setAllExcl(cid,ex){
+  prefs[cid]=Object.assign({},prefs[cid],{excl:ex?colorById.get(cid).blocks.slice():[]}); prefsChanged();
+}
+$('prefsBtn').onclick=()=>{ renderPrefs(); $('overlay').classList.add('show'); };
+$('prefClose').onclick=()=>$('overlay').classList.remove('show');
+$('overlay').onclick=e=>{ if(e.target.id==='overlay') $('overlay').classList.remove('show'); };
+$('prefSearch').oninput=renderPrefs;
+$('prefResetAll').onclick=()=>{ if(confirm('Reset ALL block preferences to defaults?')){ prefs={}; openColors.clear(); prefsChanged(); } };
+$('prefList').addEventListener('click',e=>{
+  const t=e.target.closest('button, .ch'); if(!t) return;
+  if(t.classList.contains('ch')){ const cid=+t.dataset.toggle, el=t.closest('.cclr');
+    el.classList.toggle('open'); el.classList.contains('open')?openColors.add(cid):openColors.delete(cid); return; }
+  const cid=+t.dataset.cid;
+  if(t.dataset.mv) return move(cid,t.dataset.b,t.dataset.mv);
+  if(t.hasAttribute('data-ex')) return toggleExcl(cid,t.dataset.b);
+  if(t.dataset.act==='reset'){ delete prefs[cid]; return prefsChanged(); }
+  if(t.dataset.act==='enable') return setAllExcl(cid,false);
+  if(t.dataset.act==='disable') return setAllExcl(cid,true);
+});
 
 /* export */
 function download(canvas,name){ canvas.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }); }
@@ -949,7 +994,7 @@ $('expView').onclick=()=>{ if(baseIdx) download(view,'mcmap-view.png'); };
 document.querySelectorAll('.sec[data-sec] > .head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
 
 /* init */
-buildMatList(); updateChunk(); updateShop();
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat();
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 </script>

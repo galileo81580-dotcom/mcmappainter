@@ -1,0 +1,1460 @@
+[
+    {
+        "Hex Code": "#597D27",
+        "R": 89,
+        "G": 125,
+        "B": 39,
+        "Placement": "▼",
+        "Material": "Grass",
+        "Alternatives": "Slime"
+    },
+    {
+        "Hex Code": "#6D9930",
+        "R": 109,
+        "G": 153,
+        "B": 48,
+        "Placement": "■",
+        "Material": "Grass",
+        "Alternatives": "Slime"
+    },
+    {
+        "Hex Code": "#7FB238",
+        "R": 127,
+        "G": 178,
+        "B": 56,
+        "Placement": "▲",
+        "Material": "Grass",
+        "Alternatives": "Slime"
+    },
+    {
+        "Hex Code": "#AEA473",
+        "R": 174,
+        "G": 164,
+        "B": 115,
+        "Placement": "▼",
+        "Material": "Birch",
+        "Alternatives": "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"
+    },
+    {
+        "Hex Code": "#D5C98C",
+        "R": 213,
+        "G": 201,
+        "B": 140,
+        "Placement": "■",
+        "Material": "Birch",
+        "Alternatives": "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"
+    },
+    {
+        "Hex Code": "#F7E9A3",
+        "R": 247,
+        "G": 233,
+        "B": 163,
+        "Placement": "▲",
+        "Material": "Birch",
+        "Alternatives": "Sand, Sand Stone, Glowstone, End Stone, Bone Block, Ochre Froglight"
+    },
+    {
+        "Hex Code": "#757575",
+        "R": 117,
+        "G": 117,
+        "B": 117,
+        "Placement": "▼",
+        "Material": "Iron Pressure Plate",
+        "Alternatives": "Iron Trap Door, Iron Block"
+    },
+    {
+        "Hex Code": "#909090",
+        "R": 144,
+        "G": 144,
+        "B": 144,
+        "Placement": "■",
+        "Material": "Iron Pressure Plate",
+        "Alternatives": "Iron Trap Door, Iron Block"
+    },
+    {
+        "Hex Code": "#A7A7A7",
+        "R": 167,
+        "G": 167,
+        "B": 167,
+        "Placement": "▲",
+        "Material": "Iron Pressure Plate",
+        "Alternatives": "Iron Trap Door, Iron Block"
+    },
+    {
+        "Hex Code": "#005700",
+        "R": 0,
+        "G": 87,
+        "B": 0,
+        "Placement": "▼",
+        "Material": "Leaves",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#006A00",
+        "R": 0,
+        "G": 106,
+        "B": 0,
+        "Placement": "■",
+        "Material": "Leaves",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#007C00",
+        "R": 0,
+        "G": 124,
+        "B": 0,
+        "Placement": "▲",
+        "Material": "Leaves",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#737681",
+        "R": 115,
+        "G": 118,
+        "B": 129,
+        "Placement": "▼",
+        "Material": "Clay",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#8D909E",
+        "R": 141,
+        "G": 144,
+        "B": 158,
+        "Placement": "■",
+        "Material": "Clay",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#A4A8B8",
+        "R": 164,
+        "G": 168,
+        "B": 184,
+        "Placement": "▲",
+        "Material": "Clay",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#6A4C36",
+        "R": 106,
+        "G": 76,
+        "B": 54,
+        "Placement": "▼",
+        "Material": "Dirt",
+        "Alternatives": "Jungle, Granite, Rooted Dirt, Packed Mud"
+    },
+    {
+        "Hex Code": "#825E42",
+        "R": 130,
+        "G": 94,
+        "B": 66,
+        "Placement": "■",
+        "Material": "Dirt",
+        "Alternatives": "Jungle, Granite, Rooted Dirt, Packed Mud"
+    },
+    {
+        "Hex Code": "#976D4D",
+        "R": 151,
+        "G": 109,
+        "B": 77,
+        "Placement": "▲",
+        "Material": "Dirt",
+        "Alternatives": "Jungle, Granite, Rooted Dirt, Packed Mud"
+    },
+    {
+        "Hex Code": "#4F4F4F",
+        "R": 79,
+        "G": 79,
+        "B": 79,
+        "Placement": "▼",
+        "Material": "Cobblestone",
+        "Alternatives": "Stone, Mossy Cobble, Brics, Andesite,  Gravel"
+    },
+    {
+        "Hex Code": "#606060",
+        "R": 96,
+        "G": 96,
+        "B": 96,
+        "Placement": "■",
+        "Material": "Cobblestone",
+        "Alternatives": "Stone, Mossy Cobble, Brics, Andesite,  Gravel"
+    },
+    {
+        "Hex Code": "#707070",
+        "R": 112,
+        "G": 112,
+        "B": 112,
+        "Placement": "▲",
+        "Material": "Cobblestone",
+        "Alternatives": "Stone, Mossy Cobble, Brics, Andesite,  Gravel"
+    },
+    {
+        "Hex Code": "#645432",
+        "R": 100,
+        "G": 84,
+        "B": 50,
+        "Placement": "▼",
+        "Material": "Oak",
+        "Alternatives": "Crafting Table"
+    },
+    {
+        "Hex Code": "#7B663E",
+        "R": 123,
+        "G": 102,
+        "B": 62,
+        "Placement": "■",
+        "Material": "Oak",
+        "Alternatives": "Crafting Table"
+    },
+    {
+        "Hex Code": "#8F7748",
+        "R": 143,
+        "G": 119,
+        "B": 72,
+        "Placement": "▲",
+        "Material": "Oak",
+        "Alternatives": "Crafting Table"
+    },
+    {
+        "Hex Code": "#B4B1AC",
+        "R": 180,
+        "G": 177,
+        "B": 172,
+        "Placement": "▼",
+        "Material": "Diorite",
+        "Alternatives": "Birch Log, Quartz, Sea Lantern"
+    },
+    {
+        "Hex Code": "#DCD9D3",
+        "R": 220,
+        "G": 217,
+        "B": 211,
+        "Placement": "■",
+        "Material": "Diorite",
+        "Alternatives": "Birch Log, Quartz, Sea Lantern"
+    },
+    {
+        "Hex Code": "#FFFCF5",
+        "R": 255,
+        "G": 252,
+        "B": 245,
+        "Placement": "▲",
+        "Material": "Diorite",
+        "Alternatives": "Birch Log, Quartz, Sea Lantern"
+    },
+    {
+        "Hex Code": "#B4B4B4",
+        "R": 180,
+        "G": 180,
+        "B": 180,
+        "Placement": "▼",
+        "Material": "White Wool",
+        "Alternatives": "White Concrete, Snow "
+    },
+    {
+        "Hex Code": "#DCDCDC",
+        "R": 220,
+        "G": 220,
+        "B": 220,
+        "Placement": "■",
+        "Material": "White Wool",
+        "Alternatives": "White Concrete, Snow "
+    },
+    {
+        "Hex Code": "#FFFFFF",
+        "R": 255,
+        "G": 255,
+        "B": 255,
+        "Placement": "▲",
+        "Material": "White Wool",
+        "Alternatives": "White Concrete, Snow "
+    },
+    {
+        "Hex Code": "#985924",
+        "R": 152,
+        "G": 89,
+        "B": 36,
+        "Placement": "▼",
+        "Material": "Orange Wool",
+        "Alternatives": "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"
+    },
+    {
+        "Hex Code": "#BA6D2C",
+        "R": 186,
+        "G": 109,
+        "B": 44,
+        "Placement": "■",
+        "Material": "Orange Wool",
+        "Alternatives": "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"
+    },
+    {
+        "Hex Code": "#D87F33",
+        "R": 216,
+        "G": 127,
+        "B": 51,
+        "Placement": "▲",
+        "Material": "Orange Wool",
+        "Alternatives": "Orange Concrete, Orange Glazed Terracotta, Accacia,                                         Red Sand, Red Sandstone, Honey Blocks, Honey Comb, Block of Raw Copper, Pumpkin"
+    },
+    {
+        "Hex Code": "#7D3598",
+        "R": 125,
+        "G": 53,
+        "B": 152,
+        "Placement": "▼",
+        "Material": "Magenta Wool",
+        "Alternatives": "Magenta Concrete, Magenta Glazed Terracotta, Purpur"
+    },
+    {
+        "Hex Code": "#9941BA",
+        "R": 153,
+        "G": 65,
+        "B": 186,
+        "Placement": "■",
+        "Material": "Magenta Wool",
+        "Alternatives": "Magenta Concrete, Magenta Glazed Terracotta, Purpur"
+    },
+    {
+        "Hex Code": "#B24CD8",
+        "R": 178,
+        "G": 76,
+        "B": 216,
+        "Placement": "▲",
+        "Material": "Magenta Wool",
+        "Alternatives": "Magenta Concrete, Magenta Glazed Terracotta, Purpur"
+    },
+    {
+        "Hex Code": "#486C98",
+        "R": 72,
+        "G": 108,
+        "B": 152,
+        "Placement": "▼",
+        "Material": "Light Blue Wool",
+        "Alternatives": "Light Blue Concrete, Light Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#5884BA",
+        "R": 88,
+        "G": 132,
+        "B": 186,
+        "Placement": "■",
+        "Material": "Light Blue Wool",
+        "Alternatives": "Light Blue Concrete, Light Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#6699D8",
+        "R": 102,
+        "G": 153,
+        "B": 216,
+        "Placement": "▲",
+        "Material": "Light Blue Wool",
+        "Alternatives": "Light Blue Concrete, Light Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#A1A124",
+        "R": 161,
+        "G": 161,
+        "B": 36,
+        "Placement": "▼",
+        "Material": "Yellow Wool",
+        "Alternatives": "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"
+    },
+    {
+        "Hex Code": "#C5C52C",
+        "R": 197,
+        "G": 197,
+        "B": 44,
+        "Placement": "■",
+        "Material": "Yellow Wool",
+        "Alternatives": "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"
+    },
+    {
+        "Hex Code": "#E5E533",
+        "R": 229,
+        "G": 229,
+        "B": 51,
+        "Placement": "▲",
+        "Material": "Yellow Wool",
+        "Alternatives": "Yellow Concrete, Yellow Glazed Terracotta, Haybale, Sponge"
+    },
+    {
+        "Hex Code": "#599011",
+        "R": 89,
+        "G": 144,
+        "B": 17,
+        "Placement": "▼",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Melon"
+    },
+    {
+        "Hex Code": "#6DB015",
+        "R": 109,
+        "G": 176,
+        "B": 21,
+        "Placement": "■",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Melon"
+    },
+    {
+        "Hex Code": "#7FCC19",
+        "R": 127,
+        "G": 204,
+        "B": 25,
+        "Placement": "▲",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Melon"
+    },
+    {
+        "Hex Code": "#AA5974",
+        "R": 170,
+        "G": 89,
+        "B": 116,
+        "Placement": "▼",
+        "Material": "Pink Wool",
+        "Alternatives": "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"
+    },
+    {
+        "Hex Code": "#D06D8E",
+        "R": 208,
+        "G": 109,
+        "B": 142,
+        "Placement": "■",
+        "Material": "Pink Wool",
+        "Alternatives": "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"
+    },
+    {
+        "Hex Code": "#F27FA5",
+        "R": 242,
+        "G": 127,
+        "B": 165,
+        "Placement": "▲",
+        "Material": "Pink Wool",
+        "Alternatives": "Pink Concrete, Pink Glazed Terracotta, Pearlescent Froglight"
+    },
+    {
+        "Hex Code": "#353535",
+        "R": 53,
+        "G": 53,
+        "B": 53,
+        "Placement": "▼",
+        "Material": "Gray Wool",
+        "Alternatives": "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"
+    },
+    {
+        "Hex Code": "#414141",
+        "R": 65,
+        "G": 65,
+        "B": 65,
+        "Placement": "■",
+        "Material": "Gray Wool",
+        "Alternatives": "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"
+    },
+    {
+        "Hex Code": "#4C4C4C",
+        "R": 76,
+        "G": 76,
+        "B": 76,
+        "Placement": "▲",
+        "Material": "Gray Wool",
+        "Alternatives": "Gray Concrete, Gray Glazed Terracotta, Dead Coral, Tinted Glass"
+    },
+    {
+        "Hex Code": "#6C6C6C",
+        "R": 108,
+        "G": 108,
+        "B": 108,
+        "Placement": "▼",
+        "Material": "Light Gray Wool",
+        "Alternatives": "Light Gray Concrete, Light Gray Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#848484",
+        "R": 132,
+        "G": 132,
+        "B": 132,
+        "Placement": "■",
+        "Material": "Light Gray Wool",
+        "Alternatives": "Light Gray Concrete, Light Gray Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#999999",
+        "R": 153,
+        "G": 153,
+        "B": 153,
+        "Placement": "▲",
+        "Material": "Light Gray Wool",
+        "Alternatives": "Light Gray Concrete, Light Gray Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#35596C",
+        "R": 53,
+        "G": 89,
+        "B": 108,
+        "Placement": "▼",
+        "Material": "Cyan Wool",
+        "Alternatives": "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"
+    },
+    {
+        "Hex Code": "#416D84",
+        "R": 65,
+        "G": 109,
+        "B": 132,
+        "Placement": "■",
+        "Material": "Cyan Wool",
+        "Alternatives": "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"
+    },
+    {
+        "Hex Code": "#4C7F99",
+        "R": 76,
+        "G": 127,
+        "B": 153,
+        "Placement": "▲",
+        "Material": "Cyan Wool",
+        "Alternatives": "Cyan Concrete, Cyan Glazed Terracotta, Prismarine"
+    },
+    {
+        "Hex Code": "#592C7D",
+        "R": 89,
+        "G": 44,
+        "B": 125,
+        "Placement": "▼",
+        "Material": "Purple Wool",
+        "Alternatives": "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"
+    },
+    {
+        "Hex Code": "#6D3699",
+        "R": 109,
+        "G": 54,
+        "B": 153,
+        "Placement": "■",
+        "Material": "Purple Wool",
+        "Alternatives": "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"
+    },
+    {
+        "Hex Code": "#7F3FB2",
+        "R": 127,
+        "G": 63,
+        "B": 178,
+        "Placement": "▲",
+        "Material": "Purple Wool",
+        "Alternatives": "Purple Concrete, Purple Glazed Terracotta, Mycelium, Amethyst"
+    },
+    {
+        "Hex Code": "#24357D",
+        "R": 36,
+        "G": 53,
+        "B": 125,
+        "Placement": "▼",
+        "Material": "Blue Wool",
+        "Alternatives": "Blue Concrete, Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#2C4199",
+        "R": 44,
+        "G": 65,
+        "B": 153,
+        "Placement": "■",
+        "Material": "Blue Wool",
+        "Alternatives": "Blue Concrete, Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#334CB2",
+        "R": 51,
+        "G": 76,
+        "B": 178,
+        "Placement": "▲",
+        "Material": "Blue Wool",
+        "Alternatives": "Blue Concrete, Blue Glazed Terracotta"
+    },
+    {
+        "Hex Code": "#483524",
+        "R": 72,
+        "G": 53,
+        "B": 36,
+        "Placement": "▼",
+        "Material": "Brown Wool",
+        "Alternatives": "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"
+    },
+    {
+        "Hex Code": "#58412C",
+        "R": 88,
+        "G": 65,
+        "B": 44,
+        "Placement": "■",
+        "Material": "Brown Wool",
+        "Alternatives": "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"
+    },
+    {
+        "Hex Code": "#664C33",
+        "R": 102,
+        "G": 76,
+        "B": 51,
+        "Placement": "▲",
+        "Material": "Brown Wool",
+        "Alternatives": "Brown Concrete, Brown Glazed Terracotta, Dark Oak, Soul Sand"
+    },
+    {
+        "Hex Code": "#485924",
+        "R": 72,
+        "G": 89,
+        "B": 36,
+        "Placement": "▼",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"
+    },
+    {
+        "Hex Code": "#586D2C",
+        "R": 88,
+        "G": 109,
+        "B": 44,
+        "Placement": "■",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"
+    },
+    {
+        "Hex Code": "#667F33",
+        "R": 102,
+        "G": 127,
+        "B": 51,
+        "Placement": "▲",
+        "Material": "Green Wool",
+        "Alternatives": "Green Concrete, Green Glazed Terracotta, Dried Kelp Bundles"
+    },
+    {
+        "Hex Code": "#6C2424",
+        "R": 108,
+        "G": 36,
+        "B": 36,
+        "Placement": "▼",
+        "Material": "Red Wool",
+        "Alternatives": "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"
+    },
+    {
+        "Hex Code": "#842C2C",
+        "R": 132,
+        "G": 44,
+        "B": 44,
+        "Placement": "■",
+        "Material": "Red Wool",
+        "Alternatives": "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"
+    },
+    {
+        "Hex Code": "#993333",
+        "R": 153,
+        "G": 51,
+        "B": 51,
+        "Placement": "▲",
+        "Material": "Red Wool",
+        "Alternatives": "Red Concrete, Red Glazed Terracotta, Bricks, Nether Wart Block, Shroomlight, Mangrove"
+    },
+    {
+        "Hex Code": "#111111",
+        "R": 17,
+        "G": 17,
+        "B": 17,
+        "Placement": "▼",
+        "Material": "Black Wool",
+        "Alternatives": "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"
+    },
+    {
+        "Hex Code": "#151515",
+        "R": 21,
+        "G": 21,
+        "B": 21,
+        "Placement": "■",
+        "Material": "Black Wool",
+        "Alternatives": "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"
+    },
+    {
+        "Hex Code": "#191919",
+        "R": 25,
+        "G": 25,
+        "B": 25,
+        "Placement": "▲",
+        "Material": "Black Wool",
+        "Alternatives": "Black Concrete, Black Glazed Terracotta, Block of Coal, Obsidian, Blackstone, Basalt, Skulk"
+    },
+    {
+        "Hex Code": "#B0A836",
+        "R": 176,
+        "G": 168,
+        "B": 54,
+        "Placement": "▼",
+        "Material": "Gold Pressure Plate",
+        "Alternatives": "Gold Block, Block of Raw Gold"
+    },
+    {
+        "Hex Code": "#D7CD42",
+        "R": 215,
+        "G": 205,
+        "B": 66,
+        "Placement": "■",
+        "Material": "Gold Pressure Plate",
+        "Alternatives": "Gold Block, Block of Raw Gold"
+    },
+    {
+        "Hex Code": "#FAEE4D",
+        "R": 250,
+        "G": 238,
+        "B": 77,
+        "Placement": "▲",
+        "Material": "Gold Pressure Plate",
+        "Alternatives": "Gold Block, Block of Raw Gold"
+    },
+    {
+        "Hex Code": "#409A96",
+        "R": 64,
+        "G": 154,
+        "B": 150,
+        "Placement": "▼",
+        "Material": "Prismarine Brick",
+        "Alternatives": "Dark Prismarine Brick, Diamond Block, Beacon"
+    },
+    {
+        "Hex Code": "#4FBCB7",
+        "R": 79,
+        "G": 188,
+        "B": 183,
+        "Placement": "■",
+        "Material": "Prismarine Brick",
+        "Alternatives": "Dark Prismarine Brick, Diamond Block, Beacon"
+    },
+    {
+        "Hex Code": "#5CDBD5",
+        "R": 92,
+        "G": 219,
+        "B": 213,
+        "Placement": "▲",
+        "Material": "Prismarine Brick",
+        "Alternatives": "Dark Prismarine Brick, Diamond Block, Beacon"
+    },
+    {
+        "Hex Code": "#5B3C22",
+        "R": 91,
+        "G": 60,
+        "B": 34,
+        "Placement": "▼",
+        "Material": "Spruce",
+        "Alternatives": "Podzol, Mangrove Log"
+    },
+    {
+        "Hex Code": "#6F4A2A",
+        "R": 111,
+        "G": 74,
+        "B": 42,
+        "Placement": "■",
+        "Material": "Spruce",
+        "Alternatives": "Podzol, Mangrove Log"
+    },
+    {
+        "Hex Code": "#815631",
+        "R": 129,
+        "G": 86,
+        "B": 49,
+        "Placement": "▲",
+        "Material": "Spruce",
+        "Alternatives": "Podzol, Mangrove Log"
+    },
+    {
+        "Hex Code": "#4F0100",
+        "R": 79,
+        "G": 1,
+        "B": 0,
+        "Placement": "▼",
+        "Material": "Netherack",
+        "Alternatives": "Nether Brick, Magma Block"
+    },
+    {
+        "Hex Code": "#600100",
+        "R": 96,
+        "G": 1,
+        "B": 0,
+        "Placement": "■",
+        "Material": "Netherack",
+        "Alternatives": "Nether Brick, Magma Block"
+    },
+    {
+        "Hex Code": "#700200",
+        "R": 112,
+        "G": 2,
+        "B": 0,
+        "Placement": "▲",
+        "Material": "Netherack",
+        "Alternatives": "Nether Brick, Magma Block"
+    },
+    {
+        "Hex Code": "#937C71",
+        "R": 147,
+        "G": 124,
+        "B": 113,
+        "Placement": "▼",
+        "Material": "White Terracotta",
+        "Alternatives": "Calcite"
+    },
+    {
+        "Hex Code": "#B4988A",
+        "R": 180,
+        "G": 152,
+        "B": 138,
+        "Placement": "■",
+        "Material": "White Terracotta",
+        "Alternatives": "Calcite"
+    },
+    {
+        "Hex Code": "#D1B1A1",
+        "R": 209,
+        "G": 177,
+        "B": 161,
+        "Placement": "▲",
+        "Material": "White Terracotta",
+        "Alternatives": "Calcite"
+    },
+    {
+        "Hex Code": "#703919",
+        "R": 112,
+        "G": 57,
+        "B": 25,
+        "Placement": "▼",
+        "Material": "Orange Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#89461F",
+        "R": 137,
+        "G": 70,
+        "B": 31,
+        "Placement": "■",
+        "Material": "Orange Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#9F5224",
+        "R": 159,
+        "G": 82,
+        "B": 36,
+        "Placement": "▲",
+        "Material": "Orange Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#693D4C",
+        "R": 105,
+        "G": 61,
+        "B": 76,
+        "Placement": "▼",
+        "Material": "Magenta Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#804B5D",
+        "R": 128,
+        "G": 75,
+        "B": 93,
+        "Placement": "■",
+        "Material": "Magenta Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#95576C",
+        "R": 149,
+        "G": 87,
+        "B": 108,
+        "Placement": "▲",
+        "Material": "Magenta Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#4F4C61",
+        "R": 79,
+        "G": 76,
+        "B": 97,
+        "Placement": "▼",
+        "Material": "Light Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#605D77",
+        "R": 96,
+        "G": 93,
+        "B": 119,
+        "Placement": "■",
+        "Material": "Light Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#706C8A",
+        "R": 112,
+        "G": 108,
+        "B": 138,
+        "Placement": "▲",
+        "Material": "Light Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#835D19",
+        "R": 131,
+        "G": 93,
+        "B": 25,
+        "Placement": "▼",
+        "Material": "Yellow Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#A0721F",
+        "R": 160,
+        "G": 114,
+        "B": 31,
+        "Placement": "■",
+        "Material": "Yellow Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#BA8524",
+        "R": 186,
+        "G": 133,
+        "B": 36,
+        "Placement": "▲",
+        "Material": "Yellow Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#485225",
+        "R": 72,
+        "G": 82,
+        "B": 37,
+        "Placement": "▼",
+        "Material": "Lime Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#58642D",
+        "R": 88,
+        "G": 100,
+        "B": 45,
+        "Placement": "■",
+        "Material": "Lime Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#677535",
+        "R": 103,
+        "G": 117,
+        "B": 53,
+        "Placement": "▲",
+        "Material": "Lime Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#703637",
+        "R": 112,
+        "G": 54,
+        "B": 55,
+        "Placement": "▼",
+        "Material": "Pink Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#8A4243",
+        "R": 138,
+        "G": 66,
+        "B": 67,
+        "Placement": "■",
+        "Material": "Pink Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#A04D4E",
+        "R": 160,
+        "G": 77,
+        "B": 78,
+        "Placement": "▲",
+        "Material": "Pink Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#281C18",
+        "R": 40,
+        "G": 28,
+        "B": 24,
+        "Placement": "▼",
+        "Material": "Gray Terracotta",
+        "Alternatives": "Tuff"
+    },
+    {
+        "Hex Code": "#31231E",
+        "R": 49,
+        "G": 35,
+        "B": 30,
+        "Placement": "■",
+        "Material": "Gray Terracotta",
+        "Alternatives": "Tuff"
+    },
+    {
+        "Hex Code": "#392923",
+        "R": 57,
+        "G": 41,
+        "B": 35,
+        "Placement": "▲",
+        "Material": "Gray Terracotta",
+        "Alternatives": "Tuff"
+    },
+    {
+        "Hex Code": "#5F4B45",
+        "R": 95,
+        "G": 75,
+        "B": 69,
+        "Placement": "▼",
+        "Material": "Light Gray Terracotta",
+        "Alternatives": "Mud Bricks, Exposed Copper"
+    },
+    {
+        "Hex Code": "#745C54",
+        "R": 116,
+        "G": 92,
+        "B": 84,
+        "Placement": "■",
+        "Material": "Light Gray Terracotta",
+        "Alternatives": "Mud Bricks, Exposed Copper"
+    },
+    {
+        "Hex Code": "#876B62",
+        "R": 135,
+        "G": 107,
+        "B": 98,
+        "Placement": "▲",
+        "Material": "Light Gray Terracotta",
+        "Alternatives": "Mud Bricks, Exposed Copper"
+    },
+    {
+        "Hex Code": "#3D4040",
+        "R": 61,
+        "G": 64,
+        "B": 64,
+        "Placement": "▼",
+        "Material": "Cyan Terracotta",
+        "Alternatives": "Mud"
+    },
+    {
+        "Hex Code": "#4B4F4F",
+        "R": 75,
+        "G": 79,
+        "B": 79,
+        "Placement": "■",
+        "Material": "Cyan Terracotta",
+        "Alternatives": "Mud"
+    },
+    {
+        "Hex Code": "#575C5C",
+        "R": 87,
+        "G": 92,
+        "B": 92,
+        "Placement": "▲",
+        "Material": "Cyan Terracotta",
+        "Alternatives": "Mud"
+    },
+    {
+        "Hex Code": "#56333E",
+        "R": 86,
+        "G": 51,
+        "B": 62,
+        "Placement": "▼",
+        "Material": "Purple Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#693E4B",
+        "R": 105,
+        "G": 62,
+        "B": 75,
+        "Placement": "■",
+        "Material": "Purple Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#7A4958",
+        "R": 122,
+        "G": 73,
+        "B": 88,
+        "Placement": "▲",
+        "Material": "Purple Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#352B40",
+        "R": 53,
+        "G": 43,
+        "B": 64,
+        "Placement": "▼",
+        "Material": "Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#41354F",
+        "R": 65,
+        "G": 53,
+        "B": 79,
+        "Placement": "■",
+        "Material": "Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#4C3E5C",
+        "R": 76,
+        "G": 62,
+        "B": 92,
+        "Placement": "▲",
+        "Material": "Blue Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#352318",
+        "R": 53,
+        "G": 35,
+        "B": 24,
+        "Placement": "▼",
+        "Material": "Brown Terracotta",
+        "Alternatives": "Dripstone"
+    },
+    {
+        "Hex Code": "#412B1E",
+        "R": 65,
+        "G": 43,
+        "B": 30,
+        "Placement": "■",
+        "Material": "Brown Terracotta",
+        "Alternatives": "Dripstone"
+    },
+    {
+        "Hex Code": "#4C3223",
+        "R": 76,
+        "G": 50,
+        "B": 35,
+        "Placement": "▲",
+        "Material": "Brown Terracotta",
+        "Alternatives": "Dripstone"
+    },
+    {
+        "Hex Code": "#35391D",
+        "R": 53,
+        "G": 57,
+        "B": 29,
+        "Placement": "▼",
+        "Material": "Green Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#414624",
+        "R": 65,
+        "G": 70,
+        "B": 36,
+        "Placement": "■",
+        "Material": "Green Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#4C522A",
+        "R": 76,
+        "G": 82,
+        "B": 42,
+        "Placement": "▲",
+        "Material": "Green Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#642A20",
+        "R": 100,
+        "G": 42,
+        "B": 32,
+        "Placement": "▼",
+        "Material": "Red Teracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#7A3327",
+        "R": 122,
+        "G": 51,
+        "B": 39,
+        "Placement": "■",
+        "Material": "Red Teracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#8E3C2E",
+        "R": 142,
+        "G": 60,
+        "B": 46,
+        "Placement": "▲",
+        "Material": "Red Teracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#1A0F0B",
+        "R": 26,
+        "G": 15,
+        "B": 11,
+        "Placement": "▼",
+        "Material": "Black Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#1F120D",
+        "R": 31,
+        "G": 18,
+        "B": 13,
+        "Placement": "■",
+        "Material": "Black Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#251610",
+        "R": 37,
+        "G": 22,
+        "B": 16,
+        "Placement": "▲",
+        "Material": "Black Terracotta",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#852122",
+        "R": 133,
+        "G": 33,
+        "B": 34,
+        "Placement": "▼",
+        "Material": "Crimson Nylium",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#A3292A",
+        "R": 163,
+        "G": 41,
+        "B": 42,
+        "Placement": "■",
+        "Material": "Crimson Nylium",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#BD3031",
+        "R": 189,
+        "G": 48,
+        "B": 49,
+        "Placement": "▲",
+        "Material": "Crimson Nylium",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#682C44",
+        "R": 104,
+        "G": 44,
+        "B": 68,
+        "Placement": "▼",
+        "Material": "Crimson Wood",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#7F3653",
+        "R": 127,
+        "G": 54,
+        "B": 83,
+        "Placement": "■",
+        "Material": "Crimson Wood",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#943F61",
+        "R": 148,
+        "G": 63,
+        "B": 97,
+        "Placement": "▲",
+        "Material": "Crimson Wood",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#401114",
+        "R": 64,
+        "G": 17,
+        "B": 20,
+        "Placement": "▼",
+        "Material": "Crimson Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#4F1519",
+        "R": 79,
+        "G": 21,
+        "B": 25,
+        "Placement": "■",
+        "Material": "Crimson Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#5C191D",
+        "R": 92,
+        "G": 25,
+        "B": 29,
+        "Placement": "▲",
+        "Material": "Crimson Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#0F585E",
+        "R": 15,
+        "G": 88,
+        "B": 94,
+        "Placement": "▼",
+        "Material": "Warped Nylium",
+        "Alternatives": "Oxidized Copper"
+    },
+    {
+        "Hex Code": "#126C73",
+        "R": 18,
+        "G": 108,
+        "B": 115,
+        "Placement": "■",
+        "Material": "Warped Nylium",
+        "Alternatives": "Oxidized Copper"
+    },
+    {
+        "Hex Code": "#167E86",
+        "R": 22,
+        "G": 126,
+        "B": 134,
+        "Placement": "▲",
+        "Material": "Warped Nylium",
+        "Alternatives": "Oxidized Copper"
+    },
+    {
+        "Hex Code": "#286462",
+        "R": 40,
+        "G": 100,
+        "B": 98,
+        "Placement": "▼",
+        "Material": "Warped Wood",
+        "Alternatives": "Weathered Copper"
+    },
+    {
+        "Hex Code": "#327A78",
+        "R": 50,
+        "G": 122,
+        "B": 120,
+        "Placement": "■",
+        "Material": "Warped Wood",
+        "Alternatives": "Weathered Copper"
+    },
+    {
+        "Hex Code": "#3A8E8C",
+        "R": 58,
+        "G": 142,
+        "B": 140,
+        "Placement": "▲",
+        "Material": "Warped Wood",
+        "Alternatives": "Weathered Copper"
+    },
+    {
+        "Hex Code": "#3C1F2B",
+        "R": 60,
+        "G": 31,
+        "B": 43,
+        "Placement": "▼",
+        "Material": "Warped Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#4A2535",
+        "R": 74,
+        "G": 37,
+        "B": 53,
+        "Placement": "■",
+        "Material": "Warped Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#562C3E",
+        "R": 86,
+        "G": 44,
+        "B": 62,
+        "Placement": "▲",
+        "Material": "Warped Log (Hyphae)",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#0E7F5D",
+        "R": 14,
+        "G": 127,
+        "B": 93,
+        "Placement": "▼",
+        "Material": "Warped Wart Block",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#119B72",
+        "R": 17,
+        "G": 155,
+        "B": 114,
+        "Placement": "■",
+        "Material": "Warped Wart Block",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#14B485",
+        "R": 20,
+        "G": 180,
+        "B": 133,
+        "Placement": "▲",
+        "Material": "Warped Wart Block",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#464646",
+        "R": 70,
+        "G": 70,
+        "B": 70,
+        "Placement": "▼",
+        "Material": "Deepslate",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#565656",
+        "R": 86,
+        "G": 86,
+        "B": 86,
+        "Placement": "■",
+        "Material": "Deepslate",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#646464",
+        "R": 100,
+        "G": 100,
+        "B": 100,
+        "Placement": "▲",
+        "Material": "Deepslate",
+        "Alternatives": ""
+    },
+    {
+        "Hex Code": "#597569",
+        "R": 89,
+        "G": 117,
+        "B": 105,
+        "Placement": "▼",
+        "Material": "Verdant Froglight",
+        "Alternatives": "Glow LIchen"
+    },
+    {
+        "Hex Code": "#6D9081",
+        "R": 109,
+        "G": 144,
+        "B": 129,
+        "Placement": "■",
+        "Material": "Verdant Froglight",
+        "Alternatives": "Glow LIchen"
+    },
+    {
+        "Hex Code": "#7FA796",
+        "R": 127,
+        "G": 167,
+        "B": 150,
+        "Placement": "▲",
+        "Material": "Verdant Froglight",
+        "Alternatives": "Glow LIchen"
+    }
+]

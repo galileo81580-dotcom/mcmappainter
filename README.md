@@ -16,8 +16,13 @@ list, a materials shopping list, and PNG export.
   Floyd–Steinberg / ordered dithering to the Minecraft palette (no external pre-processing).
 - **Adjustable map size** — set how many maps wide × tall (1 map = 128×128 blocks) with
   contain / cover / stretch fit.
-- **Material control** — enable/disable any of the 53 block materials; the matcher only uses
-  what you have, and the shopping list updates to match.
+- **Modern palette** — all 61 paintable map colours of current Minecraft (Java 1.21.x),
+  including cherry, bamboo, mangrove, resin, tuff/copper variants, mud, froglights, pale
+  moss and the deepslate family.
+- **Block preferences** — for every map colour, rank the blocks you'd use in preference
+  order (preferred + backups) and exclude any you don't have. A fully-excluded colour is
+  dropped from matching. Choices persist in your browser. The guide, tooltips and shopping
+  list all follow your picks; the block inspector tooltip shows the alternatives.
 - **Fast viewport rendering** — renders only what's visible, so it stays smooth at any zoom
   even on multi-map builds (the original redrew every pixel every frame).
 - **Block inspector** — hover any block for its material, placement, alternatives, and
@@ -40,21 +45,24 @@ python3 -m http.server 8000
 
 ## How it works
 
-`palette.json` maps every Minecraft map colour (hex → R/G/B, placement symbol, material,
-alternative blocks). The palette is embedded directly into `index.html`, so the app needs no
-network and no build step. Images are matched to the nearest palette colour in CIELAB space
-with optional error-diffusion dithering.
+`palette.json` lists each Minecraft base map colour as `{id, name, rgb, blocks}`, where `rgb`
+is the brightest (×255) shade and `blocks` is the default preference-ordered list of blocks
+that produce that colour. The app derives the three staircase shades (×180 ▼ / ×220 ■ / ×255
+▲) at load. The palette is embedded directly into `index.html`, so the app needs no network
+and no build step. Images are matched to the nearest enabled colour in CIELAB space with
+optional error-diffusion dithering. Colour/block RGB data is sourced from the Minecraft Wiki
+"Map item format" page (Java 1.21.x).
 
 ## Repo layout
 
 | Path | Purpose |
 |------|---------|
 | `index.html` | The entire app (palette embedded). |
-| `palette.json` | Source palette, for editing / regenerating. |
-| `examples/` | Sample dithered image and the original prototype for reference. |
+| `palette.json` | Source palette (`{id, name, rgb, blocks}` per colour), for editing / regenerating. |
+| `examples/` | Sample image, the original prototype, and the legacy 1.18 palette for reference. |
 
 To regenerate the embedded palette after editing `palette.json`, replace the array following
-the `/*PALETTE_PLACEHOLDER*/` marker in `index.html`.
+the `/*COLORS_PLACEHOLDER*/` marker in `index.html` (a compact JSON dump of `palette.json`).
 
 ## License
 
