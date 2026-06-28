@@ -300,7 +300,7 @@
     </div>
     <div class="float" id="mini">
       <canvas id="miniCv" width="160" height="160"></canvas>
-      <div class="cap">Click a map to skip / include</div>
+      <div class="cap" id="miniCap">Click a map: ✓ done → ✗ skip → clear</div>
     </div>
   </main>
 </div>
@@ -454,7 +454,8 @@ const state={
   zoom:8, panX:0, panY:0,
   hlUp:false, hlFlat:false, hlDown:false, showSym:false,
   showMini:true, colSize:1,
-  skip:new Set(),            // "mx,my"
+  skip:new Set(),            // "mx,my" maps not being painted
+  done:new Set(),            // "mx,my" maps finished
   selected:null,             // {x, y} top-left block of a 16-tall chunk column
 };
 
@@ -599,18 +600,26 @@ function render(){
       ctx.drawImage(tintCanvas, sx0,sy0,sx1-sx0,sy1-sy0, px+sx0*z, py+sy0*z, (sx1-sx0)*z, (sy1-sy0)*z);
   }
 
-  // skip-map dimming
-  if(state.skip.size){
+  // skip / done map overlays
+  if(state.skip.size || state.done.size){
     ctx.save();
-    for(const key of state.skip){
+    const mark=(key,done)=>{
       const [mx,my]=key.split(',').map(Number);
       const bx=mx*128, by=my*128;
-      if(bx>=W||by>=H) continue;
+      if(bx>=W||by>=H) return;
       const X=px+bx*z, Y=py+by*z, Wd=Math.min(128,W-bx)*z, Hd=Math.min(128,H-by)*z;
-      ctx.fillStyle='rgba(10,10,12,.72)'; ctx.fillRect(X,Y,Wd,Hd);
-      ctx.strokeStyle='rgba(255,90,90,.6)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(X,Y); ctx.lineTo(X+Wd,Y+Hd); ctx.moveTo(X+Wd,Y); ctx.lineTo(X,Y+Hd); ctx.stroke();
-    }
+      if(done){
+        ctx.fillStyle='rgba(40,150,80,.30)'; ctx.fillRect(X,Y,Wd,Hd);
+        ctx.strokeStyle='rgba(70,196,106,.85)'; ctx.lineWidth=Math.max(2,z*0.4);
+        ctx.beginPath(); ctx.moveTo(X+Wd*0.30,Y+Hd*0.52); ctx.lineTo(X+Wd*0.45,Y+Hd*0.68); ctx.lineTo(X+Wd*0.72,Y+Hd*0.34); ctx.stroke();
+      } else {
+        ctx.fillStyle='rgba(10,10,12,.72)'; ctx.fillRect(X,Y,Wd,Hd);
+        ctx.strokeStyle='rgba(255,90,90,.6)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(X,Y); ctx.lineTo(X+Wd,Y+Hd); ctx.moveTo(X+Wd,Y); ctx.lineTo(X,Y+Hd); ctx.stroke();
+      }
+    };
+    for(const key of state.done) mark(key,true);
+    for(const key of state.skip) mark(key,false);
     ctx.restore();
   }
 
@@ -668,18 +677,25 @@ function drawMini(){
   miniCv.width=cw; miniCv.height=ch;
   const m=miniCv.getContext('2d');
   m.imageSmoothingEnabled=false; m.drawImage(baseCanvas,0,0,cw,ch);
-  // map grid + skip overlay
+  // map grid + skip/done overlay
   const mw=cw/state.mapsW, mh=ch/state.mapsH;
   for(let my=0;my<state.mapsH;my++)for(let mx=0;mx<state.mapsW;mx++){
-    if(state.skip.has(mx+','+my)){
+    const k=mx+','+my;
+    if(state.done.has(k)){
+      m.fillStyle='rgba(40,150,80,.45)'; m.fillRect(mx*mw,my*mh,mw,mh);
+      m.strokeStyle='rgba(120,230,150,.95)'; m.lineWidth=Math.max(1,mw*0.08); m.beginPath();
+      m.moveTo(mx*mw+mw*0.28,my*mh+mh*0.52); m.lineTo(mx*mw+mw*0.44,my*mh+mh*0.70); m.lineTo(mx*mw+mw*0.74,my*mh+mh*0.32); m.stroke();
+    } else if(state.skip.has(k)){
       m.fillStyle='rgba(10,10,12,.7)'; m.fillRect(mx*mw,my*mh,mw,mh);
-      m.strokeStyle='rgba(255,90,90,.8)'; m.beginPath();
+      m.strokeStyle='rgba(255,90,90,.8)'; m.lineWidth=1; m.beginPath();
       m.moveTo(mx*mw,my*mh); m.lineTo((mx+1)*mw,(my+1)*mh); m.stroke();
     }
   }
   m.strokeStyle='rgba(79,157,255,.7)'; m.lineWidth=1;
   for(let x=0;x<=state.mapsW;x++){m.beginPath();m.moveTo(x*mw,0);m.lineTo(x*mw,ch);m.stroke();}
   for(let y=0;y<=state.mapsH;y++){m.beginPath();m.moveTo(0,y*mh);m.lineTo(cw,y*mh);m.stroke();}
+  const tot=state.mapsW*state.mapsH;
+  $('miniCap').textContent=`${state.done.size}/${tot} done · ${state.skip.size} skipped — click: ✓ → ✗ → clear`;
 }
 miniCv.addEventListener('click',e=>{
   const r=miniCv.getBoundingClientRect();
@@ -687,7 +703,10 @@ miniCv.addEventListener('click',e=>{
   const my=Math.floor((e.clientY-r.top)/(r.height/state.mapsH));
   if(mx<0||my<0||mx>=state.mapsW||my>=state.mapsH) return;
   const k=mx+','+my;
-  if(state.skip.has(k)) state.skip.delete(k); else state.skip.add(k);
+  // cycle: clear -> done -> skip -> clear
+  if(state.done.has(k)){ state.done.delete(k); state.skip.add(k); }
+  else if(state.skip.has(k)){ state.skip.delete(k); }
+  else { state.done.add(k); }
   drawMini(); updateShop(); scheduleRender();
 });
 
@@ -876,7 +895,7 @@ function loadFromSource(img, exact){
   $('mapsW').value=guessW; $('mapsH').value=guessH;
   $('srcInfo').textContent=`Source ${img.width}×${img.height}px`;
   $('drop').classList.add('hide');
-  state.skip.clear(); state.selected=null; collist.style.display='none';
+  state.skip.clear(); state.done.clear(); state.selected=null; collist.style.display='none';
   if(exact){
     // reproduce the original app exactly: 1:1 nearest mapping, no dithering
     state.fit='stretch';   $('fit').value='stretch';
