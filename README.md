@@ -8,7 +8,7 @@ Drop in an image and the app dithers it to the real Minecraft map palette, then 
 zoomable, pannable block grid with per-block material info, a chunk-by-chunk column build
 list, a materials shopping list, and PNG export.
 
-**Live app:** https://kylelp.github.io/mcmappainter/ <!-- update to your Pages URL -->
+**Live app:** https://galileo81580-dotcom.github.io/mcmappainter/
 
 ## Features
 
