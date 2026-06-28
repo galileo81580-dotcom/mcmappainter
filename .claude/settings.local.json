@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Bash(curl -sL \"https://storage.googleapis.com/mcmappainter.appspot.com/mc-map-painter/sunset6.html\" -o old-app.html)",
+      "Bash(curl -sL __TRACKED_VAR__/palette.json -o palette.json)",
+      "Bash(curl -sL __TRACKED_VAR__/sunset%20dither.png -o sunset_dither.png)",
+      "Bash(python3 -)",
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=Kyle -c user.email=kyle@leadershipproperties.com commit -q -m 'Rebuild MC Map Painter: in-browser dithering, viewport rendering, full guide tooling *)"
+    ]
+  }
+}

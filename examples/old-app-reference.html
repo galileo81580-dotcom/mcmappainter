@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pixel Color Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Emoji:wght@700&display=swap" rel="stylesheet">
+  <style>
+    #settings {
+      position: sticky;
+      top: 0px;
+      left: 0px;
+      width: 500px;
+      background-color: rgba(255, 255, 255, 0.6);
+      z-index: 15;
+    }
+    #canvas {
+      position: relative;
+      top: 0px;
+      left: 0px;
+      border: 1px solid #000;
+      cursor: crosshair;
+      font-family: 'Noto Emoji', sans-serif;
+      z-index: 1;
+    }
+    #hlcanvas {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      z-index: 10;
+    }
+    #wrapper {
+      position: relative;
+    }
+    #collist {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 100;
+      background-color: rgba(255, 255, 255, 0.75);
+      border: 1px solid black;
+      width: 250px;
+      padding: 10px;    
+      display: none;
+    }
+    #popup {
+      display: none;
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.6);
+      width: 300px;
+      padding: 10px;
+      z-index: 20;
+    }
+    .header {
+      font-weight: bolder;
+    }
+    .resetMarker {
+      font-color: red;
+    }
+    #debug {
+      display: none;
+    }
+    
+    /* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+}
+
+label {
+  white-space: nowrap;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .2s;
+  transition: .2s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .2s;
+  transition: .2s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(13px);
+  -ms-transform: translateX(13px);
+  transform: translateX(13px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 17px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+    
+    
+  </style>
+</head>
+<body>
+
+
+
+
+  <div id="settings">
+    <label>Upper Left Coordinate:
+    <input type="text" id="startX" size="5" value="-26176">, 
+    <input type="text" id="startY" size="5" value="6208"></label>
+    <span id="chunk">Chunk: </span></br>
+    <label>Zoom:
+    <input type="range" id="zoom-slider" min="1" max="16" value="8"></label>
+    <span id="zoom-value"></span></br>
+    <span>Highlight Options: </span><br>
+    <label class="switch">&#x25b2; Raised Tint
+      <input type="checkbox" id="up">
+      <span class="slider round"></span>
+    </label><br>
+    
+    <label class="switch">&#x25a0; Flat Hue
+      <input type="checkbox" id="flat">
+      <span class="slider round"></span>
+    </label><br>
+
+    <label class="switch">&#x25bc; Lowered Shade
+      <input type="checkbox" id="down">
+      <span class="slider round"></span>
+    </label></br>
+    
+    <label class="switch">
+      <input type="checkbox" id="mode">
+      <span class="slider round"></span>
+      Indicate Directions on Grid (above zoom 8 only)
+    </label></br>
+  </div>
+  
+  <div id="debug"></div>
+  <div id="wrapper">
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <canvas id="hlcanvas" width="512" height="512"></canvas>
+  </div>
+  
+  
+  <div id="collist">
+    <label class="switch">Display Column List on: 
+    Left<input type="checkbox" id="listposition" checked>
+    <span class="slider round"></span>Right
+  </label></br>
+  <div id="collisttext"></div>
+  <button type="button" id="hidecollist">Hide</button>
+  </div>
+  <div id="popup""></div>
+    
+  <script>
+  
+    const debug = document.getElementById('debug');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomValue = document.getElementById('zoom-value');
+
+    const chkUp = document.getElementById('up');
+    const chkFlat = document.getElementById('flat');
+    const chkDown = document.getElementById('down');
+    const chkMode = document.getElementById('mode');
+    let hlUp = chkUp.checked;
+    let hlFlat = chkFlat.checked;
+    let hlDown = chkDown.checked;
+    let drawDirections = chkMode.checked;
+
+    const hlCanvas = document.getElementById('hlcanvas');
+    hlCanvas.top = canvas.top;
+    hlCanvas.left = canvas.left;
+    const hlCtx = hlCanvas.getContext('2d');
+    
+    var paletteData;
+    var image;
+    var imageData;
+
+    // Async initializations
+    debug.innerHtml="Page elements loaded.</br>";
+    debug.innerHTML+='Waiting for data intialization.</br>';
+    Promise.all([
+      loadPalette('palette.json'),
+      loadImage('sunset dither.png')
+    ])
+    .then(function(){
+      debug.innerHtml += "Data initialization looks good...</br>";
+      imageData = parseImage();
+      doZoom();
+    });
+
+    // short initializations
+
+    const startXinput = document.getElementById('startX');
+    const startYinput = document.getElementById('startY');
+    const chunkLabel = document.getElementById('chunk');
+    const popup = document.getElementById('popup');
+    const colListBox = document.getElementById('collist');
+    const colList = document.getElementById('collisttext');
+    const hideBtn = document.getElementById('hidecollist');
+    const listPos = document.getElementById('listposition');
+    
+    let zoom = parseInt(zoomSlider.value, 10);
+    let startX = parseInt(startXinput.value, 10);
+    let startY = parseInt(startYinput.value, 10);
+    
+    let chunk = getChunkID(startX,startY)
+    chunkLabel.innerHTML += '(X: ' + chunk.X + ', Z: ' + chunk.Y + ' )'; 
+    
+  
+    // setup event listeners
+    zoomSlider.addEventListener('input', doZoom);
+    
+    hlCanvas.addEventListener('mouseout', function(){
+      popup.style.display = 'none';
+    });
+    
+    chkUp.addEventListener('input', function(){
+      hlUp = chkUp.checked;
+      if(imageData){
+        drawImage(imageData);
+      }
+    });
+
+    chkFlat.addEventListener('input', function(){
+      hlFlat = chkFlat.checked;
+      if(imageData){
+        drawImage(imageData);
+      }
+    });
+
+    chkDown.addEventListener('input', function(){
+      hlDown = chkDown.checked;
+      if(imageData){
+        drawImage(imageData);
+      }
+    });
+    
+    chkMode.addEventListener('input', function(){
+      drawDirections = chkMode.checked;
+      if(imageData){
+        drawImage(imageData);
+      }
+    });
+    
+    hideBtn.addEventListener('click', function(){
+      colListBox.style.display = 'none';
+    });
+    
+    listPos.addEventListener('input', function(){
+      if( listPos.checked ){
+        colListBox.style.removeProperty( 'left' );
+        colListBox.style.right = '10px';
+      } else {
+        colListBox.style.removeProperty( 'right' );
+        colListBox.style.left = '10px';
+      }
+    });
+
+    hlCanvas.addEventListener('mousemove', function(event){
+      const x = event.offsetX+1;
+      const y = event.offsetY+1;
+      const XinMap = Math.floor(x / zoom);
+      const YinMap = Math.floor(y / zoom);
+      const XinGame = XinMap + startX;
+      const YinGame = YinMap + startY;
+      const ChunkX = Math.floor(XinGame/16);
+      const ChunkY = Math.floor(YinGame/16);
+      let c = getChunkID(XinGame,YinGame);
+      const XinChunk = XinGame - c.X*16;
+      const YinChunk = YinGame - c.Y*16;
+
+      const pixel = imageData[XinMap][YinMap];
+      
+      popup.innerHTML = '<span class="header">';
+      popup.innerHTML += '<span style="font-size: 25pt; color:' + pixel.Hex + '">'+pixel.Position + '</span>'; 
+      popup.innerHTML += '( ' + XinMap + ', ' + YinMap + ' )  :  ';
+      popup.innerHTML += '[X: ' + XinGame + ', Z: ' + YinGame + ' ]</br>';
+      popup.innerHTML += 'CHUNK: ( ' + c.X + ', ' + c.Y + ' )  :  ';
+      popup.innerHTML += '[ ' + XinChunk + ', ' + YinChunk + ']</span></br>';
+
+      popup.innerHTML += pixel.Position + ' ' + pixel.Material + '</br>';
+      popup.innerHTML += '</br>Alt: ' + pixel.Alternatives;
+      
+      popup.style.border = "thick solid " + pixel.hex;
+      popup.style.left = (event.pageX + 10) + 'px';
+      popup.style.top = (event.pageY + 10) + 'px';
+      popup.width = 300 + 'px';
+      popup.style.display = 'block';
+    });
+  
+
+    hlCanvas.addEventListener('click',function(event){
+      const rect = canvas.getBoundingClientRect();
+      const x = event.offsetX+1;
+      const y = event.offsetY+1;
+      const XinMap = Math.floor(x / zoom);
+      const YinMap = Math.floor(y / zoom);
+      const XinGame = XinMap + startX;
+      const YinGame = YinMap + startY;
+      let c = getChunkID(XinGame,YinGame);
+      const ChunkX = parseInt(XinGame/16);
+      const ChunkY = parseInt(YinGame/16);    
+      const XinChunk = XinGame - c.X*16;
+      const YinChunk = YinGame - c.Y*16;
+
+      colList.innerHTML = 'Column X= ' + XinChunk + ' in Chunk ' + '( ' + c.X + ', ' + c.Y + ' )</br>';
+      
+      hlCtx.clearRect( 0, 0, hlCanvas.width, hlCanvas.height );
+      hlCtx.strokeStyle = 'rgba(225, 225, 0, 0.8)';
+      hlCtx.lineWidth = 2;
+      hlCtx.strokeRect(XinMap*zoom, (ChunkY*16 - startY)*zoom, zoom, 16*zoom);
+            
+      for( let row = 0; row < 16; row++){
+        let pixel = imageData[XinMap][ChunkY*16 - startY + row];
+        colList.innerHTML += '<span style="font-size: 25pt; color:' + pixel.Hex + '">\u25A0</span>';
+        if( pixel.Position === '▲' ){
+          colList.innerHTML += '<span style="color: #ff0000">';
+        } else {
+          colList.innerHTML += '<span>';
+        }
+        colList.innerHTML += row + ': ' + pixel.Position + ' ' + pixel.Material + '</span></br>';
+      }
+      
+      colListBox.style.display = 'block';
+    });
+
+      // Load palette data
+    function loadPalette(url){
+      return fetch(url)
+        .then(function(response) {
+          debug.innerHTML+="Palette file loaded  ";
+          return response.json();
+        })
+        .then(function(data){
+          paletteData = data;
+          debug.innerHTML += 'with ' + paletteData.length + " entries </br>" 
+        })
+        .catch(function(error) {
+          console.log('Error loading palette:', error);
+        });
+    }
+    
+    // Load image data
+    function loadImage(url){
+      return new Promise(function(resolve) {
+        image = new Image();
+        image.addEventListener('load', function(){
+          debug.innerHTML+='Image file loaded.</br>';
+          resolve(image);
+        });
+        image.src = url;
+      });
+    }
+    
+    // update zoom and redraw
+    function doZoom(){
+      zoom = parseInt(zoomSlider.value, 10);
+      zoomValue.innerHTML = zoom + 'x  <i>(' + canvas.width + ' x ' + canvas.height + ")</i>";
+      if(imageData){
+        drawImage(imageData);
+      }
+    }
+
+    
+    function parseImage(){
+      debug.innerHTML+='Begin building image record.</br>';
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = image.width;
+      tempCanvas.height = image.height;
+      tempCtx.drawImage(image,0,0);
+      
+      let tempData = tempCtx.getImageData(0,0,tempCanvas.width, tempCanvas.height).data;
+      
+      let data = new Array();
+      for (let x = 0; x < image.width; x++) {
+        data[x] = new Array();
+        for( let y = 0; y < image.height; y++) {
+          
+          const index = (y * image.width + x) * 4;
+          const r = tempData[index];
+          const g = tempData[index + 1];
+          const b = tempData[index + 2];
+          const hex = '#' + rgbToHex([r,g,b]).toUpperCase() 
+//        Hex: '#' + rgbToHex(tempData.slice(index,index+3)).toUpperCase()
+          const colorInfo = paletteData.find(function(color) {
+            return color['Hex Code'] === hex;
+          });
+          
+//          if (colorInfo) {
+            const pixel = {
+              R: r,
+              G: g,
+              B: b,
+              Hex: hex,
+              Position: colorInfo.Placement,
+              Material: colorInfo.Material,
+              Alternatives: colorInfo.Alternative,
+            }
+          data[x][y] = pixel;
+        }
+      }
+      debug.innerHTML+="Image record built with "+data.length + " columns and " + data[0].length + " rows.</br>";
+      return data;
+    };
+    
+    function drawImage(imageData){
+      debug.innerHTML += "Clearing image.</br>";      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+      hlCtx.fillStyle = "red";
+      hlCtx.fillRect( 50, 50, 100, 100 );
+      const width = image.width * zoom;
+      const height = image.height * zoom;
+      
+      canvas.width = width;
+      canvas.height = height;
+      hlCanvas.width = width;
+      hlCanvas.height = height;      
+      
+      debug.innerHTML += "Begin drawing image.</br>";
+      
+      ctx.textAlign = 'center';
+      ctx.textBaseLine = 'top';
+      
+      //draw zoomed pixels
+      for (var x = 0; x < imageData.length; x++) {
+        for (var y = 0; y < imageData[y].length; y++) {
+          if(zoom>8 && drawDirections){
+            if( ( hlUp && imageData[x][y].Position == '\u{25b2}' ) ||
+                ( hlFlat && imageData[x][y].Position == '\u{25a0}' ) ||
+                ( hlDown && imageData[x][y].Position == '\u{25bc}' ) ){
+              ctx.fillStyle = '#ff0000';
+              ctx.fillRect(x*zoom, y*zoom, zoom, zoom);
+            }
+            ctx.fillStyle = 'rgb(' + imageData[x][y].R + 
+                            ', ' + imageData[x][y].G + 
+                            ', ' + imageData[x][y].B + ')';
+            ctx.font = (zoom+6) + 'px "Noto Emoji"';
+            ctx.textBaseline = 'top';
+            ctx.fillText(imageData[x][y].Position,x*zoom+zoom/2,y*zoom-2);
+          } else {
+            ctx.fillStyle = 'rgb(' + imageData[x][y].R + 
+                            ', ' + imageData[x][y].G + 
+                            ', ' + imageData[x][y].B + ')';
+            ctx.fillRect(x*zoom, y*zoom, zoom, zoom);
+            if( ( hlUp && imageData[x][y].Position == '\u{25b2}' ) ||
+                ( hlFlat && imageData[x][y].Position == '\u{25a0}' ) ||
+                ( hlDown && imageData[x][y].Position == '\u{25bc}' ) ){
+              ctx.strokeStyle = 'rgba(250, 0, 0, 0.5)';
+              ctx.linewidth = 2;
+              ctx.strokeRect(x*zoom, y*zoom, zoom, zoom);
+            }
+          }
+        }
+      }
+      
+      // Draw major divisions
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = 4;
+
+      for (var x = zoom * 128; x < width; x += zoom * 128) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+
+      for (var y = zoom * 128; y < height; y += zoom * 128) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Draw minor divisions
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 2;
+
+      for (var x = zoom * 16; x < width; x += zoom * 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+
+      for (var y = zoom * 16; y < height; y += zoom * 16) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Draw faint divider
+      if(zoom>2){
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
+
+        for (var x = zoom; x < width; x += zoom) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+
+        for (var y = zoom; y < height; y += zoom) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+      }
+    };
+
+    function rgbToHex(rgb) {
+      return ('00'+rgb[0].toString(16)).slice(-2) + ('00'+rgb[1].toString(16)).slice(-2) + ('00'+rgb[2].toString(16)).slice(-2);
+    };
+    
+    function getChunkID(x,y){
+      return {
+        X: Math.floor(x/16),
+        Y: Math.floor(y/16)
+      }
+    }
+  </script>
+</body>
+</html>
+
