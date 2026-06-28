@@ -219,8 +219,8 @@
       <div class="head">World alignment <span class="chev">▾</span></div>
       <div class="body">
         <div class="row"><label style="flex:none">Upper-left X,Z</label>
-          <input type="text" id="startX" value="0" style="width:80px">
-          <input type="text" id="startY" value="0" style="width:80px"></div>
+          <input type="text" id="startX" value="-26176" style="width:80px">
+          <input type="text" id="startY" value="6208" style="width:80px"></div>
         <div class="hint" id="chunkInfo"></div>
       </div>
     </div>
@@ -235,7 +235,7 @@
         <label class="switch"><span class="lbl">Direction symbols (zoom ≥ 12)</span><input type="checkbox" id="showSym"><span class="track"></span></label>
         <label class="switch"><span class="lbl">Column list on right</span><input type="checkbox" id="listRight" checked><span class="track"></span></label>
         <label class="switch"><span class="lbl">Show minimap / skip-maps</span><input type="checkbox" id="showMini" checked><span class="track"></span></label>
-        <div class="row" style="margin-top:10px"><label style="flex:none">Zoom</label><input type="range" id="zoom" min="1" max="32" value="6"></div>
+        <div class="row" style="margin-top:10px"><label style="flex:none">Zoom</label><input type="range" id="zoom" min="1" max="32" value="8"></div>
         <button class="sm" id="fitView" style="width:100%">Fit to screen</button>
       </div>
     </div>
@@ -435,8 +435,8 @@ const GLYPH={ '▲':'▲','■':'■','▼':'▼' };
 const state={
   mapsW:1, mapsH:1, blocksW:128, blocksH:128,
   fit:'contain', algo:'fs',
-  startX:0, startY:0,
-  zoom:6, panX:40, panY:40,
+  startX:-26176, startY:6208,
+  zoom:8, panX:0, panY:0,
   hlUp:false, hlFlat:false, hlDown:false, showSym:false,
   listRight:true, showMini:true,
   skip:new Set(),            // "mx,my"
@@ -827,18 +827,29 @@ window.addEventListener('keydown',e=>{
 });
 
 /* ===== image loading ===== */
-function loadFromSource(img){
+function loadFromSource(img, exact){
   srcImage=img;
-  // auto map size from aspect, capped
-  const guessW=Math.max(1,Math.min(16,Math.round(img.width/128)));
-  const guessH=Math.max(1,Math.min(16,Math.round(img.height/128)));
+  // map size: snap to whole maps from the source (exact for multiples of 128)
+  const guessW=Math.max(1,Math.min(32,Math.round(img.width/128)));
+  const guessH=Math.max(1,Math.min(32,Math.round(img.height/128)));
   state.mapsW=guessW; state.mapsH=guessH;
   $('mapsW').value=guessW; $('mapsH').value=guessH;
   $('srcInfo').textContent=`Source ${img.width}×${img.height}px`;
   $('drop').classList.add('hide');
   state.skip.clear(); state.selected=null; collist.style.display='none';
-  processImage();
-  setTimeout(fitToScreen,0);
+  if(exact){
+    // reproduce the original app exactly: 1:1 nearest mapping, no dithering
+    state.fit='stretch';   $('fit').value='stretch';
+    state.algo='none';     $('algo').value='none';
+    state.startX=-26176;   state.startY=6208;
+    $('startX').value=-26176; $('startY').value=6208; updateChunk();
+    processImage();
+    state.zoom=8; $('zoom').value=8; state.panX=0; state.panY=0;   // original opened top-left at 8×
+    scheduleRender();
+  } else {
+    processImage();
+    setTimeout(fitToScreen,0);
+  }
 }
 function loadFile(file){
   if(!file || !file.type.startsWith('image/')) return;
@@ -849,13 +860,11 @@ function loadFile(file){
 $('loadBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
 $('sampleBtn').onclick=()=>{
-  const c=document.createElement('canvas'); c.width=256; c.height=128; const g=c.getContext('2d');
-  const grad=g.createLinearGradient(0,0,256,128);
-  grad.addColorStop(0,'#ff7e5f'); grad.addColorStop(.5,'#feb47b'); grad.addColorStop(1,'#2b5876');
-  g.fillStyle=grad; g.fillRect(0,0,256,128);
-  g.fillStyle='#ffd24a'; g.beginPath(); g.arc(190,42,26,0,7); g.fill();
-  for(let i=0;i<40;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*0.5})`; g.fillRect(Math.random()*256,Math.random()*70,2,2);}
-  const img=new Image(); img.onload=()=>loadFromSource(img); img.src=c.toDataURL();
+  // the original pre-dithered map art, at the original app's exact settings
+  const img=new Image();
+  img.onload=()=>loadFromSource(img,true);
+  img.onerror=()=>{ $('srcInfo').textContent='Could not load sample image (examples/sunset-dither.png).'; };
+  img.src='examples/sunset-dither.png';
 };
 // drag & drop
 ['dragenter','dragover'].forEach(ev=>main.addEventListener(ev,e=>{e.preventDefault(); main.classList.add('dragover');}));

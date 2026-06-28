@@ -14,6 +14,9 @@ list, a materials shopping list, and PNG export.
 
 - **Load any image** — drag & drop, file picker, or the built-in sample. Automatic
   Floyd–Steinberg / ordered dithering to the Minecraft palette (no external pre-processing).
+  The **Sample** button loads the original pre-dithered art at the original app's exact
+  settings (12×6 maps, zoom 8, world origin −26176/6208, nearest-match) — a verified
+  pixel-perfect, block-aligned reproduction of the legacy Cloud Storage version.
 - **Adjustable map size** — set how many maps wide × tall (1 map = 128×128 blocks) with
   contain / cover / stretch fit.
 - **Modern palette** — all 61 paintable map colours of current Minecraft (Java 1.21.x),
