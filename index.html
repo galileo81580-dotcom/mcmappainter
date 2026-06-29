@@ -385,6 +385,7 @@
         <p>Sign in with GitHub to create &amp; edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.</p>
         <button class="primary" id="authGithub">Sign in with GitHub</button>
         <button id="authGuest">Continue as guest (read-only)</button>
+        <div class="hint" id="authErr" style="color:var(--up); margin-top:10px"></div>
       </div>
     </div>
     <div class="float" id="mini">
@@ -1545,9 +1546,17 @@ async function initCloud(){
       import(V+'firebase-app.js'), import(V+'firebase-auth.js'),
       import(V+'firebase-database.js')
     ]);
-    const {getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithPopup,GithubAuthProvider,getAdditionalUserInfo}=authMod;
+    const {getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithPopup,signInWithRedirect,getRedirectResult,GithubAuthProvider,getAdditionalUserInfo}=authMod;
     const app=initializeApp(FIREBASE_CONFIG);
     const auth=getAuth(app); const rtdb=db.getDatabase(app);
+    const ghProvider=()=>{ const p=new GithubAuthProvider(); p.addScope('public_repo'); return p; };
+    function captureGhCred(res){
+      if(!res) return;
+      const cred=GithubAuthProvider.credentialFromResult(res);
+      if(cred && cred.accessToken){ localStorage.setItem('mcmp_gh_token',cred.accessToken); $('ghToken').value=cred.accessToken; }
+      const info=getAdditionalUserInfo(res); if(info && info.username){ ghLogin=info.username; localStorage.setItem('mcmp_gh_login',ghLogin); }
+    }
+    try{ captureGhCred(await getRedirectResult(auth)); }catch(e){ console.warn('redirect result',e); }
 
     // workspaces live in Realtime Database (Firestore is in legacy Datastore mode on this project)
     const wsRef = id => db.ref(rtdb,'workspaces/'+id);
@@ -1583,13 +1592,8 @@ async function initCloud(){
         const s = idle ? null : state.selected;   // idle clears the column
         db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()});
       },
-      async signInGitHub(){
-        const provider=new GithubAuthProvider(); provider.addScope('public_repo');
-        const res=await signInWithPopup(auth, provider);
-        const cred=GithubAuthProvider.credentialFromResult(res);
-        if(cred && cred.accessToken){ localStorage.setItem('mcmp_gh_token',cred.accessToken); $('ghToken').value=cred.accessToken; }
-        const info=getAdditionalUserInfo(res); if(info && info.username){ ghLogin=info.username; localStorage.setItem('mcmp_gh_login',ghLogin); }
-      },
+      async signInGitHub(){ captureGhCred(await signInWithPopup(auth, ghProvider())); },
+      signInGitHubRedirect(){ return signInWithRedirect(auth, ghProvider()); },  // popup-blocker fallback
       signInGuest(){ return signInAnonymously(auth); },
       signOutUser(){ return signOut(auth); }
     };
@@ -1633,7 +1637,23 @@ function applyRoleUI(){
   else if(role==='guest'){ if(s) s.innerHTML='Viewing as <b>guest</b> (read-only)'; if(btn) btn.textContent='Sign in with GitHub'; }
   else { if(s) s.textContent='Not signed in'; if(btn) btn.textContent='Sign in with GitHub'; }
 }
-async function authSignInGitHub(){ try{ await cloud.signInGitHub(); }catch(e){ setWsStatus('GitHub sign-in failed: '+e.message); } }
+async function authSignInGitHub(){
+  const err=$('authErr'); if(err) err.textContent='';
+  if(!cloud){ if(err) err.textContent='Cloud not ready yet — try again in a moment.'; return; }
+  try{
+    await cloud.signInGitHub();
+  }catch(e){
+    const code=e.code||e.message||'';
+    if(/popup-blocked|popup-closed|cancelled-popup|operation-not-supported/.test(code)){
+      try{ await cloud.signInGitHubRedirect(); return; }   // navigates away & back
+      catch(e2){ if(err) err.textContent='Sign-in failed: '+(e2.code||e2.message); return; }
+    }
+    let msg='Sign-in failed: '+code;
+    if(/unauthorized-domain/.test(code)) msg='This site isn’t authorized. In Firebase → Authentication → Settings → Authorized domains, add: '+location.hostname;
+    if(err) err.textContent=msg;
+    console.error('github sign-in', e);
+  }
+}
 $('authBtn') && ($('authBtn').onclick=async()=>{
   if(!cloud) return;
   if(role==='github'){ await cloud.signOutUser(); }   // -> onAuthChanged shows the prompt
