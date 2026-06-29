@@ -37,12 +37,13 @@
   }
   aside::-webkit-scrollbar{width:10px} aside::-webkit-scrollbar-thumb{background:#3a404c;border-radius:8px}
 
-  .sec{border-bottom:1px solid var(--line)}
+  .sec{border-bottom:1px solid #0c0d10}
   .sec > .head{
     display:flex; align-items:center; gap:8px; padding:11px 14px; cursor:pointer;
-    user-select:none; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted);
+    user-select:none; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:#eef1f5;
+    background:#2b313c; border-top:1px solid #3a414e; border-bottom:1px solid #0c0d10; box-shadow:inset 3px 0 0 var(--accent);
   }
-  .sec > .head:hover{color:var(--txt)}
+  .sec > .head:hover{background:#323948; color:#fff}
   .sec > .head .chev{margin-left:auto; transition:transform .15s; color:var(--muted)}
   .sec.collapsed > .head .chev{transform:rotate(-90deg)}
   .sec > .body{padding:4px 14px 14px}
@@ -267,6 +268,28 @@
         </div>
         <div class="hint">1 map = 128×128 blocks.</div>
 
+        <div class="seclabel">Colour matching</div>
+        <div class="row between"><label>Dithering</label>
+          <select id="algo" style="width:150px">
+            <option value="fs">Floyd–Steinberg</option>
+            <option value="ordered">Ordered (4×4)</option>
+            <option value="none">None (nearest)</option>
+          </select>
+        </div>
+        <div class="hint">Choose which block you'll use for each map colour, in preference order. Disabled colours are excluded from matching.</div>
+        <button class="primary" id="prefsBtn" style="width:100%">Block preferences…</button>
+        <div class="hint" id="prefStat" style="margin-top:8px"></div>
+
+        <div class="seclabel">World alignment</div>
+        <div class="row"><label style="flex:none">Upper-left X,Z</label>
+          <input type="text" id="startX" value="-26176" style="width:80px">
+          <input type="text" id="startY" value="6208" style="width:80px"></div>
+        <div class="hint" id="chunkInfo"></div>
+
+        <div class="seclabel">Materials list</div>
+        <div class="hint">Counts exclude skipped maps.</div>
+        <div id="shop"></div>
+
         <div class="seclabel">Save &amp; share</div>
         <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Save as…</button></div>
         <button class="sm" id="repoPublish" style="width:100%;margin-top:6px">Publish image to repo (share with others)…</button>
@@ -288,34 +311,6 @@
       </div>
     </div>
 
-    <!-- DITHER -->
-    <div class="sec" data-sec="dither">
-      <div class="head">Color matching <span class="chev">▾</span></div>
-      <div class="body">
-        <div class="row between"><label>Dithering</label>
-          <select id="algo" style="width:150px">
-            <option value="fs">Floyd–Steinberg</option>
-            <option value="ordered">Ordered (4×4)</option>
-            <option value="none">None (nearest)</option>
-          </select>
-        </div>
-        <div class="hint">Choose which block you'll use for each map colour, in preference order. Disabled colours are excluded from matching.</div>
-        <button class="primary" id="prefsBtn" style="width:100%">Block preferences…</button>
-        <div class="hint" id="prefStat" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-    <!-- WORLD -->
-    <div class="sec" data-sec="world">
-      <div class="head">World alignment <span class="chev">▾</span></div>
-      <div class="body">
-        <div class="row"><label style="flex:none">Upper-left X,Z</label>
-          <input type="text" id="startX" value="-26176" style="width:80px">
-          <input type="text" id="startY" value="6208" style="width:80px"></div>
-        <div class="hint" id="chunkInfo"></div>
-      </div>
-    </div>
-
     <!-- DISPLAY -->
     <div class="sec" data-sec="display">
       <div class="head">Display <span class="chev">▾</span></div>
@@ -327,15 +322,6 @@
         <label class="switch"><span class="lbl">Show minimap / skip-maps</span><input type="checkbox" id="showMini" checked><span class="track"></span></label>
         <div class="row" style="margin-top:10px"><label style="flex:none">Zoom</label><input type="range" id="zoom" min="1" max="32" value="8"></div>
         <button class="sm" id="fitView" style="width:100%">Fit to screen</button>
-      </div>
-    </div>
-
-    <!-- SHOPPING -->
-    <div class="sec" data-sec="shop">
-      <div class="head">Materials list <span class="chev">▾</span></div>
-      <div class="body">
-        <div class="hint">Counts exclude skipped maps.</div>
-        <div id="shop"></div>
       </div>
     </div>
 
