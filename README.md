@@ -32,9 +32,16 @@ list, a materials shopping list, and PNG export.
   in-game / chunk coordinates (set your upper-left world X,Z).
 - **Column build list** — click a block to see the 16-block chunk column; step through
   neighbouring columns with the on-screen buttons or the arrow keys (← → ↑ ↓).
-- **Painting area** — click maps on the minimap to mark them *skipped* (dimmed, and excluded
-  from the shopping list).
+- **Painting progress** — click maps on the minimap to cycle **done (green ✓) → skip (red ✗)
+  → clear**. Done/skip are shown on the canvas and minimap with a progress count; skipped
+  maps are excluded from the shopping list.
 - **Materials shopping list** — total blocks per material, stack count, across painted maps.
+- **Saved workspaces** — save your settings, block preferences, and done/skip progress as
+  named workspaces and reload them from a dropdown. Works locally out of the box; with a
+  Firebase config it becomes shared cloud storage (see below).
+- **Multi-user presence** *(with Firebase)* — when several people open the same workspace,
+  each person's highlighted column shows live in their own colour, and an online list shows
+  who's working where.
 - **Export** — the dithered result at 1× (1 px per block) or the current view as PNG.
 
 ## Usage
@@ -45,6 +52,32 @@ It's a single self-contained `index.html` — open it directly, or serve the fol
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
+
+## Optional: shared workspaces + multi-user (Firebase)
+
+Saved workspaces work locally (browser storage) with no setup. To make them shared across
+people and devices — and to enable live multi-user presence — add a Firebase project. It runs
+entirely on the **free Spark plan** (no credit card, no hosting fee): this app uses only
+**Firestore** (workspaces) and **Realtime Database** (presence), and deliberately avoids Cloud
+Storage and Cloud Functions, which are the only parts that would require the paid plan.
+
+1. In the [Firebase console](https://console.firebase.google.com/), use your existing project
+   (e.g. `mcmappainter`) or create one. Stay on the **Spark (free)** plan.
+2. Enable **Firestore Database**, **Realtime Database**, and **Authentication → Anonymous**.
+3. Apply the security rules in [`firebase/`](firebase/): `firestore.rules` and
+   `database.rules.json` (paste them in the console, or `firebase deploy --only firestore:rules,database`).
+4. Project settings → *Your apps* → **Web app** → copy the config object, and paste it into
+   `index.html` where it says:
+   ```js
+   const FIREBASE_CONFIG = /*FIREBASE_CONFIG*/ null;
+   ```
+   e.g. `const FIREBASE_CONFIG = { apiKey:"…", authDomain:"…", projectId:"…", databaseURL:"…", appId:"…" };`
+   (Make sure `databaseURL` is present — it appears once Realtime Database is enabled.)
+
+That's it. With a config present, the Workspace dropdown reads/writes to the cloud and everyone
+on the same workspace sees each other's highlighted columns in real time. Without it, the app
+silently falls back to local browser storage. Workspaces store settings + block preferences +
+done/skip progress (not the image), so collaborators load the same source image themselves.
 
 ## How it works
 

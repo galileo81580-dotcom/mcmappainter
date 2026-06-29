@@ -185,6 +185,21 @@
   </header>
 
   <aside id="sidebar">
+    <!-- WORKSPACE -->
+    <div class="sec" data-sec="workspace">
+      <div class="head">Workspace <span class="chev">▾</span></div>
+      <div class="body">
+        <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select></div>
+        <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Save as…</button></div>
+        <div class="btnrow" style="margin-top:8px"><button id="wsNew">New</button><button id="wsDelete">Delete</button></div>
+        <div class="hint" id="wsStatus"></div>
+        <div class="row between" style="margin-top:6px"><label style="flex:none">Your name</label>
+          <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
+          <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
+        <div class="hint" id="wsPeers"></div>
+      </div>
+    </div>
+
     <!-- IMAGE -->
     <div class="sec" data-sec="image">
       <div class="head">Image <span class="chev">▾</span></div>
@@ -323,6 +338,11 @@
 
 <script>
 "use strict";
+/* ===== Firebase config — paste your project's web config object here to enable
+   shared cloud workspaces + live multi-user presence. Leave null for local-only.
+   (Firebase console → Project settings → Your apps → SDK setup → Config) ===== */
+const FIREBASE_CONFIG = /*FIREBASE_CONFIG*/ null;
+
 /* ---- palette: [hex, r, g, b, placement, material, alternatives] ---- */
 const COLORS_RAW = /*COLORS_PLACEHOLDER*/
 [
@@ -464,6 +484,7 @@ let baseCanvas=document.createElement('canvas');  // 1px per block, dithered
 let baseIdx=null;            // Int16Array W*H -> palette index, -1 empty
 let tintCanvas=document.createElement('canvas');  // highlight overlay 1px/block
 let nearestCache=new Map();
+let peers={};                // uid -> {name,color,x,y} other users' highlighted columns
 
 /* ===== DOM ===== */
 const $=id=>document.getElementById(id);
@@ -636,7 +657,20 @@ function render(){
     }
   }
 
-  // selection
+  // other users' highlighted columns (multi-user presence)
+  for(const uid in peers){
+    const p=peers[uid]; if(p.x==null||p.y==null) continue;
+    ctx.strokeStyle=p.color||'#fff'; ctx.lineWidth=2;
+    ctx.strokeRect(px+p.x*z+1, py+p.y*z+1, z-2, 16*z-2);
+    if(p.name){
+      ctx.font='600 11px Inter,sans-serif'; const tw=ctx.measureText(p.name).width;
+      ctx.fillStyle=p.color||'#fff'; ctx.fillRect(px+p.x*z, py+p.y*z-15, tw+8, 14);
+      ctx.fillStyle='#0b0c0f'; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillText(p.name, px+p.x*z+4, py+p.y*z-8);
+    }
+  }
+
+  // my selection
   if(state.selected){
     const {x,y}=state.selected;
     ctx.strokeStyle='rgba(255,230,0,.95)'; ctx.lineWidth=2;
@@ -707,7 +741,7 @@ miniCv.addEventListener('click',e=>{
   if(state.done.has(k)){ state.done.delete(k); state.skip.add(k); }
   else if(state.skip.has(k)){ state.skip.delete(k); }
   else { state.done.add(k); }
-  drawMini(); updateShop(); scheduleRender();
+  drawMini(); updateShop(); scheduleRender(); touchWorkspace();
 });
 
 /* ===== shopping list ===== */
@@ -812,7 +846,7 @@ function selectColumn(bx,by){
   let yTop=yTopGame-state.startY;
   if(yTop<0) yTop=0;
   state.selected={x:bx, y:yTop};
-  renderColumn(); scheduleRender();
+  renderColumn(); scheduleRender(); broadcastSel();
 }
 function renderColumn(){
   if(!state.selected || !baseIdx){ collist.style.display='none'; return; }
@@ -834,13 +868,13 @@ function renderColumn(){
   $('chRows').innerHTML=html;
   collist.style.display='block';
 }
-$('chClose').addEventListener('click',()=>{ state.selected=null; collist.style.display='none'; scheduleRender(); });
+$('chClose').addEventListener('click',()=>{ state.selected=null; collist.style.display='none'; scheduleRender(); broadcastSel(); });
 collist.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>navColumn(btn.dataset.nav)));
 
 /* column-list window: size controls + draggable */
 function applyColSize(){ collist.style.setProperty('--cs', state.colSize.toFixed(2)); }
-$('colPlus').onclick=()=>{ state.colSize=Math.min(3,+(state.colSize+0.15).toFixed(2)); applyColSize(); };
-$('colMinus').onclick=()=>{ state.colSize=Math.max(0.6,+(state.colSize-0.15).toFixed(2)); applyColSize(); };
+$('colPlus').onclick=()=>{ state.colSize=Math.min(3,+(state.colSize+0.15).toFixed(2)); applyColSize(); touchWorkspace(); };
+$('colMinus').onclick=()=>{ state.colSize=Math.max(0.6,+(state.colSize-0.15).toFixed(2)); applyColSize(); touchWorkspace(); };
 
 function makeDraggable(el, handle){
   handle.addEventListener('pointerdown',e=>{
@@ -871,7 +905,7 @@ function navColumn(dir){
   if(x<0||x>=state.blocksW||y<0||y>=state.blocksH) return;
   state.selected={x,y};
   centerOn(x+0.5, y+8);
-  renderColumn(); scheduleRender();
+  renderColumn(); scheduleRender(); broadcastSel();
 }
 function centerOn(bx,by){
   const r=view.getBoundingClientRect();
@@ -945,13 +979,13 @@ $('fitView').onclick=fitToScreen;
 
 /* ===== controls wiring ===== */
 function num(id,min,max){ const v=parseInt($(id).value,10); return isNaN(v)?min:Math.max(min,Math.min(max,v)); }
-$('mapsW').onchange=()=>{ state.mapsW=num('mapsW',1,32); $('mapsW').value=state.mapsW; processImage(); fitToScreen(); };
-$('mapsH').onchange=()=>{ state.mapsH=num('mapsH',1,32); $('mapsH').value=state.mapsH; processImage(); fitToScreen(); };
-$('fit').onchange=()=>{ state.fit=$('fit').value; processImage(); };
-$('algo').onchange=()=>{ state.algo=$('algo').value; processImage(); };
+$('mapsW').onchange=()=>{ state.mapsW=num('mapsW',1,32); $('mapsW').value=state.mapsW; processImage(); fitToScreen(); touchWorkspace(); };
+$('mapsH').onchange=()=>{ state.mapsH=num('mapsH',1,32); $('mapsH').value=state.mapsH; processImage(); fitToScreen(); touchWorkspace(); };
+$('fit').onchange=()=>{ state.fit=$('fit').value; processImage(); touchWorkspace(); };
+$('algo').onchange=()=>{ state.algo=$('algo').value; processImage(); touchWorkspace(); };
 $('startX').onchange=$('startY').onchange=()=>{
   state.startX=parseInt($('startX').value,10)||0; state.startY=parseInt($('startY').value,10)||0;
-  updateChunk(); renderColumn();
+  updateChunk(); renderColumn(); touchWorkspace();
 };
 $('zoom').oninput=()=>{ const r=view.getBoundingClientRect(); const cx=(r.width/2-state.panX)/state.zoom, cy=(r.height/2-state.panY)/state.zoom; state.zoom=parseInt($('zoom').value,10); state.panX=r.width/2-cx*state.zoom; state.panY=r.height/2-cy*state.zoom; scheduleRender(); };
 function bindToggle(id,key,after){ $(id).onchange=()=>{ state[key]=$(id).checked; (after||(()=>{}))(); }; }
@@ -1018,6 +1052,7 @@ function prefsChanged(){
   updatePrefStat(); renderPrefs();
   if(setChanged) processImage();              // re-dither: available colours changed
   else { updateShop(); renderColumn(); scheduleRender(); }
+  touchWorkspace();
 }
 function reorderBlock(cid, block, target, after){
   if(block===target) return;
@@ -1098,10 +1133,184 @@ $('expView').onclick=()=>{ if(baseIdx) download(view,'mcmap-view.png'); };
 /* section collapse */
 document.querySelectorAll('.sec[data-sec] > .head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
 
+/* ===================================================================
+   Workspaces (saved presets) + multi-user presence
+   - Storage abstraction: localStorage by default; Firebase when configured.
+   - A workspace = settings + block prefs + done/skip (NOT the image).
+   =================================================================== */
+let currentWsId='';          // '' = unsaved/local working state
+let cloud=null;              // populated by initCloud() when FIREBASE_CONFIG present
+let myUid='local-'+Math.random().toString(36).slice(2,8);
+
+function genId(){ return 'ws_'+Math.random().toString(36).slice(2,9); }
+function userName(){ return ($('wsName').value||'').trim() || 'Anonymous'; }
+function userColor(){ return $('wsColor').value||'#4f9dff'; }
+
+function captureWorkspace(name){
+  return {
+    name: name || (currentWsId ? (wsNames[currentWsId]||'Untitled') : 'Untitled'),
+    mapsW:state.mapsW, mapsH:state.mapsH, fit:state.fit, algo:state.algo,
+    startX:state.startX, startY:state.startY, colSize:state.colSize,
+    prefs: JSON.parse(JSON.stringify(prefs)),
+    done:[...state.done], skip:[...state.skip],
+    updatedAt: Date.now()
+  };
+}
+let applying=false;
+function applyWorkspace(w){
+  if(!w) return;
+  applying=true;
+  state.mapsW=w.mapsW||1; state.mapsH=w.mapsH||1; state.fit=w.fit||'contain'; state.algo=w.algo||'fs';
+  state.startX=w.startX||0; state.startY=w.startY||0; state.colSize=w.colSize||1;
+  prefs = w.prefs ? JSON.parse(JSON.stringify(w.prefs)) : {};
+  state.done=new Set(w.done||[]); state.skip=new Set(w.skip||[]);
+  $('mapsW').value=state.mapsW; $('mapsH').value=state.mapsH; $('fit').value=state.fit; $('algo').value=state.algo;
+  $('startX').value=state.startX; $('startY').value=state.startY;
+  savePrefs(); updateChunk(); applyColSize(); recomputeEnabled(); renderPrefs(); updatePrefStat();
+  processImage(); drawMini(); updateShop(); renderColumn();
+  applying=false;
+}
+
+/* ---- storage backends ---- */
+const LS_KEY='mcmp_workspaces_v1';
+const lsAll =()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch(e){ return {}; } };
+const lsWrite=m=>{ try{ localStorage.setItem(LS_KEY, JSON.stringify(m)); }catch(e){} };
+const localBackend={
+  type:'local',
+  async list(){ const m=lsAll(); return Object.keys(m).map(id=>({id,name:m[id].name})); },
+  async load(id){ return lsAll()[id]||null; },
+  async save(id,data){ const m=lsAll(); m[id]=data; lsWrite(m); },
+  async remove(id){ const m=lsAll(); delete m[id]; lsWrite(m); }
+};
+const backend=()=> cloud ? cloud.store : localBackend;
+
+let wsNames={};              // id -> name (for dropdown)
+async function refreshWsList(selId){
+  const items=await backend().list();
+  wsNames={}; items.forEach(i=>wsNames[i.id]=i.name);
+  const sel=$('wsSelect');
+  const cur = selId!==undefined ? selId : currentWsId;
+  sel.innerHTML='<option value="">(unsaved — '+(cloud?'not shared':'local')+')</option>'+
+    items.sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+  sel.value=cur||'';
+}
+
+/* debounced autosave of the active workspace */
+let wsSaveTimer=null;
+function touchWorkspace(){
+  if(applying || !currentWsId) return;
+  clearTimeout(wsSaveTimer);
+  wsSaveTimer=setTimeout(async()=>{
+    try{ await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓'); }
+    catch(e){ setWsStatus('Save failed: '+e.message); }
+  }, 600);
+}
+function setWsStatus(t){ $('wsStatus').textContent=t; }
+
+let unsubscribeWs=null;
+async function openWorkspace(id){
+  if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
+  if(cloud) cloud.leavePresence();
+  currentWsId=id;
+  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; if(cloud) cloud.joinPresence(''); return; }
+  if(cloud){
+    unsubscribeWs = cloud.subscribe(id, w=>{ if(w) applyWorkspace(w); });
+    cloud.joinPresence(id);
+    setWsStatus('Synced to cloud.');
+  } else {
+    const w=await backend().load(id); applyWorkspace(w); setWsStatus('Loaded (local).');
+  }
+}
+async function saveAsWorkspace(){
+  const name=prompt('Workspace name:', captureWorkspace().name); if(name===null) return;
+  const id=genId(); currentWsId=id;
+  await backend().save(id, captureWorkspace(name.trim()||'Untitled'));
+  await refreshWsList(id);
+  setWsStatus('Created “'+(name||'Untitled')+'”.');
+  if(cloud){ if(unsubscribeWs)unsubscribeWs(); unsubscribeWs=cloud.subscribe(id,w=>{if(w)applyWorkspace(w);}); cloud.joinPresence(id); }
+}
+$('wsSelect').onchange=()=>openWorkspace($('wsSelect').value);
+$('wsSave').onclick=async()=>{
+  if(!currentWsId) return saveAsWorkspace();
+  await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓');
+};
+$('wsSaveAs').onclick=saveAsWorkspace;
+$('wsNew').onclick=()=>{ openWorkspace(''); setWsStatus('New unsaved workspace — use “Save as…” to keep it.'); };
+$('wsDelete').onclick=async()=>{
+  if(!currentWsId){ setWsStatus('Nothing to delete.'); return; }
+  if(!confirm('Delete workspace “'+(wsNames[currentWsId]||'')+'”?')) return;
+  await backend().remove(currentWsId); currentWsId=''; await refreshWsList(''); setWsStatus('Deleted.');
+};
+$('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); if(cloud) cloud.updatePresence(); };
+$('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); if(cloud) cloud.updatePresence(); };
+
+/* broadcast my highlighted column (no-op unless cloud presence is active) */
+function broadcastSel(){ if(cloud) cloud.updatePresence(); }
+
+/* ---- Firebase cloud backend (loaded only when configured) ---- */
+async function initCloud(){
+  if(!FIREBASE_CONFIG){ setWsStatus('Local only. Add a Firebase config to share & collaborate.'); return; }
+  try{
+    const V='https://www.gstatic.com/firebasejs/10.12.0/';
+    const [{initializeApp},{getAuth,signInAnonymously,onAuthStateChanged},fs,db]=await Promise.all([
+      import(V+'firebase-app.js'), import(V+'firebase-auth.js'),
+      import(V+'firebase-firestore.js'), import(V+'firebase-database.js')
+    ]);
+    const app=initializeApp(FIREBASE_CONFIG);
+    const auth=getAuth(app); const store=fs.getFirestore(app); const rtdb=db.getDatabase(app);
+    await signInAnonymously(auth);
+    await new Promise(res=>onAuthStateChanged(auth,u=>{ if(u){ myUid=u.uid; res(); } }));
+
+    const col=fs.collection(store,'workspaces');
+    const cloudStore={
+      type:'cloud',
+      async list(){ const s=await fs.getDocs(col); return s.docs.map(d=>({id:d.id,name:(d.data().name||'Untitled')})); },
+      async load(id){ const d=await fs.getDoc(fs.doc(col,id)); return d.exists()?d.data():null; },
+      async save(id,data){ await fs.setDoc(fs.doc(col,id),data); },
+      async remove(id){ await fs.deleteDoc(fs.doc(col,id)); }
+    };
+    let presRef=null;
+    cloud={
+      store:cloudStore,
+      subscribe(id,cb){ return fs.onSnapshot(fs.doc(col,id),d=>cb(d.exists()?d.data():null)); },
+      joinPresence(id){
+        if(!id){ return; }
+        presRef=db.ref(rtdb,'presence/'+id+'/'+myUid);
+        db.onDisconnect(presRef).remove();
+        this.updatePresence();
+        const listRef=db.ref(rtdb,'presence/'+id);
+        this._unsub=db.onValue(listRef,snap=>{
+          const val=snap.val()||{}; const next={};
+          for(const uid in val){ if(uid===myUid) continue; next[uid]=val[uid]; }
+          peers=next; renderPeerList(); scheduleRender();
+        });
+      },
+      leavePresence(){ if(this._unsub){this._unsub();this._unsub=null;} if(presRef){ db.remove(presRef); presRef=null; } peers={}; renderPeerList(); },
+      updatePresence(){
+        if(!presRef) return;
+        const s=state.selected;
+        db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,ts:Date.now()});
+      }
+    };
+    setWsStatus('Connected to cloud ✓');
+  }catch(e){
+    cloud=null; setWsStatus('Cloud unavailable ('+e.message+'); using local.');
+  }
+}
+function renderPeerList(){
+  const n=Object.keys(peers).length;
+  if(!n){ $('wsPeers').textContent=''; return; }
+  $('wsPeers').innerHTML='<b>Online:</b> '+Object.values(peers).map(p=>
+    `<span style="color:${p.color}">●</span> ${p.name}${p.x!=null?` (col ${p.x})`:''}`).join(' · ');
+}
+
 /* init */
+$('wsName').value=localStorage.getItem('mcmp_username')||'';
+$('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
 recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize();
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
+initCloud().finally(()=>refreshWsList());
 </script>
 </body>
 </html>
