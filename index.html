@@ -282,6 +282,8 @@
         <div class="row between"><label style="flex:none">Your name</label>
           <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
           <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
+        <label class="switch"><span class="lbl">I'm in Minecraft 🎮</span><input type="checkbox" id="ingame"><span class="track"></span></label>
+        <div class="hint">Auto-marks you idle after 15 min without touching the map.</div>
         <div class="hint" id="wsPeers"></div>
       </div>
     </div>
@@ -579,6 +581,13 @@ let role=null;               // null (no cloud / not signed in) | 'github' (read
 let ghLogin='';              // GitHub username when signed in
 // write allowed when there's no cloud (pure local) OR you're a GitHub user; guests are read-only
 function canWrite(){ return !cloud || role==='github'; }
+let idle=false, ingame=false, idleTimer=null;
+let IDLE_MS=15*60*1000;      // auto-idle after 15 min without touching the map
+function noteActivity(){
+  if(idle){ idle=false; broadcastSel(); renderPeerList(); }  // returned from idle -> show my column again
+  clearTimeout(idleTimer);
+  idleTimer=setTimeout(()=>{ idle=true; broadcastSel(); renderPeerList(); }, IDLE_MS);
+}
 
 /* ===== DOM ===== */
 const $=id=>document.getElementById(id);
@@ -886,6 +895,7 @@ view.addEventListener('mousedown',e=>{
   if(e.button!==0) return;
   drag={x0:e.clientX,y0:e.clientY,px:state.panX,py:state.panY,moved:false};
 });
+['pointerdown','wheel'].forEach(ev=>view.addEventListener(ev,noteActivity,{passive:true}));
 window.addEventListener('mousemove',e=>{
   if(drag){
     const dx=e.clientX-drag.x0, dy=e.clientY-drag.y0;
@@ -958,6 +968,7 @@ function selectColumn(bx,by){
   let yTop=yTopGame-state.startY;
   if(yTop<0) yTop=0;
   state.selected={x:bx, y:yTop};
+  noteActivity();
   renderColumn(); scheduleRender(); broadcastSel();
 }
 function renderColumn(){
@@ -1077,6 +1088,7 @@ function navColumn(dir){
   else if(dir==='up') y-=16; else if(dir==='down') y+=16;
   if(x<0||x>=state.blocksW||y<0||y>=state.blocksH) return;
   state.selected={x,y};
+  noteActivity();
   centerOn(x+0.5, y+8);
   renderColumn(); scheduleRender(); broadcastSel();
 }
@@ -1524,6 +1536,7 @@ $('wsDelete').onclick=async()=>{
 };
 $('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); if(cloud) cloud.updatePresence(); };
 $('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
+$('ingame').onchange=()=>{ ingame=$('ingame').checked; broadcastSel(); renderPeerList(); };
 
 /* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
 function broadcastSel(){ if(cloud && canWrite()) cloud.updatePresence(); }
@@ -1571,8 +1584,8 @@ async function initCloud(){
       leavePresence(){ if(this._unsub){this._unsub();this._unsub=null;} if(presRef){ db.remove(presRef); presRef=null; } peers={}; renderPeerList(); },
       updatePresence(){
         if(!presRef || !canWrite()) return;
-        const s=state.selected;
-        db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,ts:Date.now()});
+        const s = idle ? null : state.selected;   // idle clears the column
+        db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()});
       },
       async signInGitHub(){
         const provider=new GithubAuthProvider(); provider.addScope('public_repo');
@@ -1634,10 +1647,15 @@ $('authGithub') && ($('authGithub').onclick=authSignInGitHub);
 $('authGuest') && ($('authGuest').onclick=()=>cloud && cloud.signInGuest());
 function renderPeerList(){
   updateConn();
+  const mine = (cloud && role) ? (idle?' · <i>you: idle</i>':'')+(ingame?' · <span title="in Minecraft">🎮 you in-game</span>':'') : '';
   const n=Object.keys(peers).length;
-  if(!n){ $('wsPeers').textContent=''; return; }
-  $('wsPeers').innerHTML='<b>Online:</b> '+Object.values(peers).map(p=>
-    `<span style="color:${p.color}">●</span> ${p.name}${p.x!=null?` (col ${p.x})`:''}`).join(' · ');
+  if(!n){ $('wsPeers').innerHTML = mine?('<b>You</b>'+mine):''; return; }
+  const list=Object.values(peers).map(p=>{
+    const where = p.idle ? '<i>(idle)</i>' : (p.x!=null?`(col ${p.x})`:'');
+    const game = p.ingame ? ' 🎮' : '';
+    return `<span style="color:${p.color};opacity:${p.idle?0.5:1}">●</span> ${p.name}${game} ${where}`;
+  }).join(' · ');
+  $('wsPeers').innerHTML='<b>Online:</b> '+list+mine;
 }
 
 /* init */
@@ -1647,7 +1665,7 @@ recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 loadRepoList();
-applyRoleUI();
+applyRoleUI(); noteActivity();
 initCloud().finally(()=>{ if(!cloud) refreshWsList(); });   // cloud mode lists after auth (onAuthChanged)
 </script>
 </body>

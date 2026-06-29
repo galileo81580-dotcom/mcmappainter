@@ -41,7 +41,9 @@ list, a materials shopping list, and PNG export.
   Firebase config it becomes shared cloud storage (see below).
 - **Multi-user presence** *(with Firebase)* — when several people open the same workspace,
   each person's highlighted column shows live in their own colour, and an online list shows
-  who's working where.
+  who's working where. Presence **auto-idles after 15 min** without touching the map (so a
+  long-open tab stops showing a stale column), and an optional **"I'm in Minecraft" toggle**
+  lets people flag that they're actually in-game (Realms can't report this automatically).
 - **Export** — the dithered result at 1× (1 px per block) or the current view as PNG.
 
 ## Usage
