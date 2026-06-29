@@ -117,15 +117,28 @@
   #collist .dash .lab{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap}
   #collist .dash .val{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; line-height:1.05}
   #collist .dpad{display:grid; grid-template-columns:repeat(3,30px); grid-template-rows:repeat(3,26px); gap:4px; justify-content:center; flex:none}
-  #collist .dpad button{padding:0; font-size:12px; display:flex; align-items:center; justify-content:center}
+  #collist .dpad button{padding:0; font-size:12px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:6px}
   #collist .dpad .d-up{grid-area:1/2/2/3} #collist .dpad .d-left{grid-area:2/1/3/2}
   #collist .dpad .d-right{grid-area:2/3/3/4} #collist .dpad .d-down{grid-area:3/2/4/3}
   #collist .dpad .d-tl{grid-area:1/1/2/2} #collist .dpad .d-tr{grid-area:1/3/2/4}
   #collist .dpad .d-bl{grid-area:3/1/4/2} #collist .dpad .d-br{grid-area:3/3/4/4}
-  #collist .dpad .corner{font-size:13px; color:var(--muted)}
+  /* directional buttons — primary/bright */
+  #collist .dpad .d-up,#collist .dpad .d-down,#collist .dpad .d-left,#collist .dpad .d-right{
+    background:#39414f; border-color:#566073; color:#fff; font-size:13px}
+  #collist .dpad .d-up:hover,#collist .dpad .d-down:hover,#collist .dpad .d-left:hover,#collist .dpad .d-right:hover{
+    background:#454f60; border-color:var(--accent); color:#fff}
+  /* corner auxiliary buttons — dimmer */
+  #collist .dpad .corner{font-size:12px; color:var(--muted); background:#1b1f26; border-color:#2b313b}
+  #collist .dpad .corner:hover{color:var(--txt); border-color:var(--accent)}
   #collist .dpad #tpBtn{font-size:10px; font-weight:700; letter-spacing:.5px}
   #collist .dpad #bmBtn.active{color:#0b0c0f}
-  #collist .dpad .hub{grid-area:2/2/3/3; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:8px; border:1px dashed var(--line); border-radius:5px; text-transform:uppercase; letter-spacing:.3px}
+  /* centre connection LED */
+  #collist .dpad .hub{grid-area:2/2/3/3; display:flex; align-items:center; justify-content:center; background:none; border:none}
+  #collist .dpad .hub .led{width:13px; height:13px; border-radius:50%; background:#7a8290; transition:background .2s}
+  #collist .dpad .hub .led.ready{background:var(--accent)}
+  #collist .dpad .hub .led.live{background:var(--good); box-shadow:0 0 0 3px rgba(70,196,106,.22)}
+  #collist .dpad .hub .led.err{background:var(--up)}
+  #collist .dpad .hub .led.connecting{background:var(--warn); animation:cpulse 1s infinite}
   .popmenu{position:fixed; display:none; z-index:60; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:4px; min-width:160px}
   .popmenu.show{display:block}
   .popmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:7px 10px; border-radius:5px; font:inherit; cursor:pointer}
@@ -245,7 +258,7 @@
         <details style="margin-top:8px">
           <summary class="hint" style="cursor:pointer">GitHub upload token (for publishing)</summary>
           <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
-          <div class="hint">Fine-grained token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Only needed to publish.</div>
+          <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Needed only to <i>publish</i> an image — viewing shared images needs nothing. Collaborators can contribute their own images too: ask the repo owner to add you as a collaborator, then use your own token.</div>
         </details>
 
         <div class="row between" style="margin-top:10px"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
@@ -348,7 +361,7 @@
           <button data-nav="up" class="d-up" title="Up a chunk (↑)">▲</button>
           <button id="colPlus" class="corner d-tr" title="Bigger text">+</button>
           <button data-nav="left" class="d-left" title="Left a column (←)">◀</button>
-          <span class="hub">col</span>
+          <span class="hub" id="hub"><span class="led" id="hubLed"></span></span>
           <button data-nav="right" class="d-right" title="Right a column (→)">▶</button>
           <button id="bmBtn" class="corner d-bl" title="Bookmark column">★</button>
           <button data-nav="down" class="d-down" title="Down a chunk (↓)">▼</button>
@@ -1353,6 +1366,9 @@ function updateConn(){
   else if(currentWsId){ const n=Object.keys(peers).length; cls='live'; txt=n?`Live · ${n+1} online`:'Live · just you'; tip='Connected to the shared workspace; edits and highlighted columns sync live.'; }
   else { cls='ready'; txt='Cloud ready'; tip='Connected to the cloud. Open or save a workspace to start collaborating.'; }
   el.className='conn '+cls; el.innerHTML='<span class="dot"></span>'+txt; el.title=tip;
+  const led=$('hubLed'), hub=$('hub');
+  if(led) led.className='led '+cls;
+  if(hub) hub.title=txt+' — '+tip;
 }
 
 /* ---- shared image library (GitHub repo) ---- */

@@ -93,6 +93,12 @@ So collaborators load the *identical* source image, images are stored in the rep
 - Workspaces store the image's repo **path**, so opening a shared workspace auto-loads its
   image. Locally-loaded files stay private until you publish them.
 
+**Collaborators can contribute their own images too.** To create a new workspace with their own
+image, a collaborator just needs an authenticated GitHub account with write access to this repo:
+the owner adds them as a repo **collaborator** (Settings → Collaborators), and they use their own
+fine-grained token in the *GitHub upload token* field. Viewing already-published images needs no
+token at all.
+
 This is a low-volume, one-time-ish action (a handful of images), so a PAT is the simplest safe
 approach without standing up an OAuth backend.
 
