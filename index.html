@@ -415,7 +415,15 @@
 /* ===== Firebase config — paste your project's web config object here to enable
    shared cloud workspaces + live multi-user presence. Leave null for local-only.
    (Firebase console → Project settings → Your apps → SDK setup → Config) ===== */
-const FIREBASE_CONFIG = /*FIREBASE_CONFIG*/ null;
+const FIREBASE_CONFIG = /*FIREBASE_CONFIG*/ {
+  apiKey: "AIzaSyCjoqCDY7-ZFP9JL1fbZUeXMBLpP7eIKlM",
+  authDomain: "mcmappainter.firebaseapp.com",
+  databaseURL: "https://mcmappainter-default-rtdb.firebaseio.com",
+  projectId: "mcmappainter",
+  storageBucket: "mcmappainter.firebasestorage.app",
+  messagingSenderId: "86004054229",
+  appId: "1:86004054229:web:4cefba5a9fe5303d44ca5c"
+};
 
 /* ---- palette: [hex, r, g, b, placement, material, alternatives] ---- */
 const COLORS_RAW = /*COLORS_PLACEHOLDER*/
@@ -1533,26 +1541,28 @@ async function initCloud(){
   connState='connecting'; updateConn();
   try{
     const V='https://www.gstatic.com/firebasejs/10.12.0/';
-    const [{initializeApp},authMod,fs,db]=await Promise.all([
+    const [{initializeApp},authMod,db]=await Promise.all([
       import(V+'firebase-app.js'), import(V+'firebase-auth.js'),
-      import(V+'firebase-firestore.js'), import(V+'firebase-database.js')
+      import(V+'firebase-database.js')
     ]);
     const {getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithPopup,GithubAuthProvider,getAdditionalUserInfo}=authMod;
     const app=initializeApp(FIREBASE_CONFIG);
-    const auth=getAuth(app); const store=fs.getFirestore(app); const rtdb=db.getDatabase(app);
+    const auth=getAuth(app); const rtdb=db.getDatabase(app);
 
-    const col=fs.collection(store,'workspaces');
+    // workspaces live in Realtime Database (Firestore is in legacy Datastore mode on this project)
+    const wsRef = id => db.ref(rtdb,'workspaces/'+id);
     const cloudStore={
       type:'cloud',
-      async list(){ const s=await fs.getDocs(col); return s.docs.map(d=>({id:d.id,name:(d.data().name||'Untitled')})); },
-      async load(id){ const d=await fs.getDoc(fs.doc(col,id)); return d.exists()?d.data():null; },
-      async save(id,data){ await fs.setDoc(fs.doc(col,id),data); },
-      async remove(id){ await fs.deleteDoc(fs.doc(col,id)); }
+      async list(){ const s=await db.get(db.ref(rtdb,'workspaces')); const v=s.val()||{};
+        return Object.keys(v).map(id=>({id,name:(v[id]&&v[id].name)||'Untitled'})); },
+      async load(id){ const s=await db.get(wsRef(id)); return s.exists()?s.val():null; },
+      async save(id,data){ await db.set(wsRef(id),data); },
+      async remove(id){ await db.remove(wsRef(id)); }
     };
     let presRef=null;
     cloud={
       store:cloudStore,
-      subscribe(id,cb){ return fs.onSnapshot(fs.doc(col,id),d=>cb(d.exists()?d.data():null)); },
+      subscribe(id,cb){ return db.onValue(wsRef(id), snap=>cb(snap.exists()?snap.val():null)); },
       joinPresence(id){
         if(!id) return;
         const listRef=db.ref(rtdb,'presence/'+id);

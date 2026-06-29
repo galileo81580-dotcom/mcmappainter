@@ -1,5 +1,11 @@
 {
   "rules": {
+    "workspaces": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'github.com'"
+      }
+    },
     "presence": {
       "$workspace": {
         ".read": "auth != null",

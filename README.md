@@ -59,10 +59,12 @@ python3 -m http.server 8000
 
 Saved workspaces work locally (browser storage) with no setup. To make them shared across
 people and devices — and to enable live multi-user presence — add a Firebase project. This app
-uses only **Firestore** (workspaces) and **Realtime Database** (presence) and avoids Cloud
-Storage / Cloud Functions, so it stays within the **free tier**. (If your project already has
-billing enabled it'll be on the **Blaze** plan, which *includes* that same free tier — this
-app's usage is negligible, so it's effectively $0. Set a GCP **budget alert** for peace of mind.)
+uses only the **Realtime Database** (both workspaces *and* presence live there) plus
+**Authentication**, and avoids Firestore, Cloud Storage, and Cloud Functions — so it stays within
+the **free tier**. (If your project already has billing enabled it'll be on the **Blaze** plan,
+which *includes* that same free tier — this app's usage is negligible, so it's effectively $0.
+Set a GCP **budget alert** for peace of mind.) Note: you do **not** need Firestore — if the
+console shows Firestore in "Datastore mode" (common on old App Engine projects), ignore it.
 
 **Access model:** users **sign in with GitHub** to create/edit shared workspaces and publish
 images; that same sign-in also provides the repo token for publishing (no manual PAT). Anyone
@@ -71,15 +73,15 @@ others' highlighted columns, but can't save, edit, or publish.
 
 1. In the [Firebase console](https://console.firebase.google.com/), use your existing project
    (e.g. `mcmappainter`) or create one.
-2. Enable **Firestore Database**, **Realtime Database**, and two sign-in methods under
-   **Authentication → Sign-in method**: **Anonymous** (for guests) and **GitHub**.
+2. Enable **Realtime Database**, and two sign-in methods under **Authentication → Sign-in
+   method**: **Anonymous** (for guests) and **GitHub**.
    - GitHub requires a **GitHub OAuth App**: GitHub → Settings → Developer settings → OAuth Apps
      → *New OAuth App*. Set the **Authorization callback URL** to the value Firebase shows when
      you enable the GitHub provider (e.g. `https://<project>.firebaseapp.com/__/auth/handler`).
      Copy the **Client ID** + **Client secret** into Firebase's GitHub provider config.
-3. Apply the security rules in [`firebase/`](firebase/): `firestore.rules` and
-   `database.rules.json` (paste them in the console, or `firebase deploy --only firestore:rules,database`).
-   These allow **read** for any signed-in user (incl. guests) and **write** only for GitHub users.
+3. Apply the security rules: Realtime Database → **Rules** → paste [`firebase/database.rules.json`](firebase/database.rules.json)
+   → Publish. They allow **read** for any signed-in user (incl. guests) and **write** only for
+   GitHub users (`sign_in_provider == github.com`), for both `workspaces` and `presence`.
 4. Project settings → *Your apps* → **Web app** → copy the config object, and paste it into
    `index.html` where it says:
    ```js
