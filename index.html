@@ -87,7 +87,7 @@
 
   /* main viewport */
   main{grid-row:2; position:relative; overflow:hidden; background:#0e0f12}
-  #view{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab}
+  #view{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair}
   #view.panning{cursor:grabbing}
   #view.empty{cursor:default}
 
@@ -336,7 +336,7 @@
 
     <div class="sec">
       <div class="body" style="padding:12px 14px">
-        <div class="hint">Drag to pan · scroll to zoom · click a block for its column.
+        <div class="hint">Drag or scroll to pan · <span class="kbd">Shift</span>-scroll sideways · <span class="kbd">Ctrl</span>-scroll to zoom · click a block for its column.
         Arrows <span class="kbd">← → ↑ ↓</span> step the selected column.</div>
       </div>
     </div>
@@ -884,14 +884,25 @@ window.addEventListener('mouseup',e=>{
 });
 view.addEventListener('mouseleave',()=>popup.style.display='none');
 view.addEventListener('wheel',e=>{
+  if(!baseIdx) return;
   e.preventDefault();
-  const r=view.getBoundingClientRect();
-  const mx=e.clientX-r.left, my=e.clientY-r.top;
-  const bx=(mx-state.panX)/state.zoom, by=(my-state.panY)/state.zoom;
-  const nz=Math.max(1,Math.min(32, state.zoom + (e.deltaY<0?1:-1) * Math.max(1,Math.round(state.zoom*0.15))));
-  if(nz===state.zoom) return;
-  state.zoom=nz; $('zoom').value=nz;
-  state.panX=mx-bx*nz; state.panY=my-by*nz;
+  const k=e.deltaMode===1?16:(e.deltaMode===2?view.clientHeight:1);
+  if(e.ctrlKey || e.metaKey){
+    // ctrl/⌘ + wheel = zoom toward cursor
+    const r=view.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const bx=(mx-state.panX)/state.zoom, by=(my-state.panY)/state.zoom;
+    const nz=Math.max(1,Math.min(32, state.zoom + (e.deltaY<0?1:-1) * Math.max(1,Math.round(state.zoom*0.15))));
+    if(nz===state.zoom) return;
+    state.zoom=nz; $('zoom').value=nz;
+    state.panX=mx-bx*nz; state.panY=my-by*nz;
+  } else if(e.shiftKey){
+    // shift + wheel = horizontal pan
+    state.panX -= (e.deltaX!==0?e.deltaX:e.deltaY)*k;
+  } else {
+    // wheel = pan (vertical, plus horizontal on trackpads)
+    state.panX -= e.deltaX*k; state.panY -= e.deltaY*k;
+  }
   scheduleRender();
 },{passive:false});
 
