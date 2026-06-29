@@ -109,20 +109,28 @@
 
   #collist{display:none; top:14px; right:14px; width:max-content; min-width:228px; max-width:60vw; padding:0; overflow:hidden; --cs:1}
   #collist .ch{display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line); font-weight:600; cursor:move; user-select:none}
-  #collist .ch .szc{margin-left:auto; display:flex; gap:4px}
-  #collist .ch .szc button{padding:1px 8px; font-size:14px; line-height:1.25}
   #collist .ch #chTitle{font-size:12px; color:var(--muted); font-weight:600}
-  #collist .ch .x{cursor:pointer; color:var(--muted); padding:0 2px; font-size:14px}
-  /* top: position dashboard (left) + d-pad (right, 75% size) */
+  #collist .ch .x{margin-left:auto; cursor:pointer; color:var(--muted); padding:0 2px; font-size:14px}
+  /* top: position dashboard (left) + control pad (right) */
   #collist .top{display:flex; align-items:center; gap:12px; padding:9px 12px; border-bottom:1px solid var(--line)}
   #collist .dash{flex:1; min-width:0; display:grid; grid-template-columns:auto 1fr; column-gap:10px; row-gap:3px; align-items:baseline}
   #collist .dash .lab{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap}
   #collist .dash .val{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; line-height:1.05}
-  #collist .dpad{display:grid; grid-template-columns:repeat(3,28px); grid-template-rows:repeat(3,24px); gap:4px; justify-content:center; flex:none}
+  #collist .dpad{display:grid; grid-template-columns:repeat(3,30px); grid-template-rows:repeat(3,26px); gap:4px; justify-content:center; flex:none}
   #collist .dpad button{padding:0; font-size:12px; display:flex; align-items:center; justify-content:center}
   #collist .dpad .d-up{grid-area:1/2/2/3} #collist .dpad .d-left{grid-area:2/1/3/2}
   #collist .dpad .d-right{grid-area:2/3/3/4} #collist .dpad .d-down{grid-area:3/2/4/3}
+  #collist .dpad .d-tl{grid-area:1/1/2/2} #collist .dpad .d-tr{grid-area:1/3/2/4}
+  #collist .dpad .d-bl{grid-area:3/1/4/2} #collist .dpad .d-br{grid-area:3/3/4/4}
+  #collist .dpad .corner{font-size:13px; color:var(--muted)}
+  #collist .dpad #tpBtn{font-size:10px; font-weight:700; letter-spacing:.5px}
+  #collist .dpad #bmBtn.active{color:#0b0c0f}
   #collist .dpad .hub{grid-area:2/2/3/3; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:8px; border:1px dashed var(--line); border-radius:5px; text-transform:uppercase; letter-spacing:.3px}
+  .popmenu{position:fixed; display:none; z-index:60; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:4px; min-width:160px}
+  .popmenu.show{display:block}
+  .popmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:7px 10px; border-radius:5px; font:inherit; cursor:pointer}
+  .popmenu button:hover{background:var(--panel2)}
+  .popmenu button:disabled{color:var(--muted); cursor:default; background:none}
   #collist .rows{padding:6px 12px 12px}
   #collist .rhead{display:flex; gap:8px; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; padding:0 0 4px; margin-bottom:3px; border-bottom:1px solid var(--line)}
   #collist .rhead .i{width:calc(20px*var(--cs)); text-align:right}
@@ -332,19 +340,31 @@
     <div class="float" id="popup"></div>
     <div class="float" id="collist">
       <div class="ch" id="colHead"><span id="chTitle">Column</span>
-        <span class="szc"><button id="colMinus" title="Smaller">−</button><button id="colPlus" title="Bigger">+</button></span>
         <span class="x" id="chClose">✕</span></div>
       <div class="top">
         <div class="dash" id="chDash"></div>
         <div class="dpad">
+          <button id="colMinus" class="corner d-tl" title="Smaller text">−</button>
           <button data-nav="up" class="d-up" title="Up a chunk (↑)">▲</button>
+          <button id="colPlus" class="corner d-tr" title="Bigger text">+</button>
           <button data-nav="left" class="d-left" title="Left a column (←)">◀</button>
           <span class="hub">col</span>
           <button data-nav="right" class="d-right" title="Right a column (→)">▶</button>
+          <button id="bmBtn" class="corner d-bl" title="Bookmark column">★</button>
           <button data-nav="down" class="d-down" title="Down a chunk (↓)">▼</button>
+          <button id="tpBtn" class="corner d-br" title="Teleport command">TP</button>
         </div>
       </div>
       <div class="rows" id="chRows"></div>
+    </div>
+    <div class="popmenu" id="bmMenu">
+      <button data-bm="set">★ Set bookmark here</button>
+      <button data-bm="return">↩ Return to bookmark</button>
+      <button data-bm="clear">✕ Clear bookmark</button>
+    </div>
+    <div class="popmenu" id="tpMenu">
+      <button data-tp="copy">📋 Copy /tp command</button>
+      <button data-tp="sety">⛰ Set Y level…</button>
     </div>
     <div class="float" id="mini">
       <canvas id="miniCv" width="160" height="160"></canvas>
@@ -510,6 +530,7 @@ const state={
   skip:new Set(),            // "mx,my" maps not being painted
   done:new Set(),            // "mx,my" maps finished
   selected:null,             // {x, y} top-left block of a 16-tall chunk column
+  bookmark:null,             // {x, y} remembered column
 };
 
 let srcImage=null;
@@ -706,6 +727,13 @@ function render(){
     }
   }
 
+  // bookmarked column (player colour, bolder)
+  if(state.bookmark){
+    const {x,y}=state.bookmark;
+    ctx.strokeStyle=userColor(); ctx.lineWidth=4;
+    ctx.strokeRect(px+x*z-1, py+y*z-1, z+2, 16*z+2);
+  }
+
   // my selection
   if(state.selected){
     const {x,y}=state.selected;
@@ -895,7 +923,7 @@ function renderColumn(){
     `<span class="lab">Chunk Col X</span><span class="val">${cx}</span>`+
     `<span class="lab">Chunk Row Z</span><span class="val">${cy}</span>`+
     `<span class="lab">Sect Col X</span><span class="val">${inChunkX}</span>`;
-  let html='<div class="rhead"><span class="i">Y</span><span>block</span></div>';
+  let html='<div class="rhead"><span class="i">Z</span><span>block</span></div>';
   for(let r=0;r<16;r++){
     const yy=y+r; if(yy>=state.blocksH) break;
     const pi=baseIdx[yy*W+x];
@@ -938,6 +966,62 @@ function makeDraggable(el, handle){
 }
 makeDraggable(collist, $('colHead'));
 
+/* ---- corner pop-up menus (bookmark, teleport) ---- */
+function closeMenus(){ document.querySelectorAll('.popmenu.show').forEach(m=>m.classList.remove('show')); }
+function showMenu(menu, btn){
+  closeMenus(); menu.classList.add('show');
+  const r=btn.getBoundingClientRect(), mw=menu.offsetWidth, mh=menu.offsetHeight;
+  let left=r.left, top=r.bottom+4;
+  if(left+mw>window.innerWidth-6) left=window.innerWidth-6-mw;
+  if(top+mh>window.innerHeight-6) top=r.top-4-mh;
+  menu.style.left=Math.max(6,left)+'px'; menu.style.top=Math.max(6,top)+'px';
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.popmenu,#bmBtn,#tpBtn')) closeMenus(); });
+
+/* bookmark */
+function updateBmBtn(){
+  const btn=$('bmBtn'), on=!!state.bookmark, c=userColor();
+  btn.classList.toggle('active',on);
+  btn.style.background=on?c:''; btn.style.borderColor=on?c:'';
+  btn.title=on?'Bookmarked — menu':'Bookmark column';
+}
+$('bmBtn').onclick=e=>{
+  e.stopPropagation();
+  $('bmMenu').querySelector('[data-bm=set]').disabled=!state.selected;
+  $('bmMenu').querySelector('[data-bm=return]').disabled=!state.bookmark;
+  $('bmMenu').querySelector('[data-bm=clear]').disabled=!state.bookmark;
+  showMenu($('bmMenu'), $('bmBtn'));
+};
+$('bmMenu').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||b.disabled) return;
+  if(b.dataset.bm==='set'){ if(state.selected){ state.bookmark={...state.selected}; setWsStatus('Column bookmarked.'); } }
+  else if(b.dataset.bm==='return'){ if(state.bookmark){ state.selected={...state.bookmark}; centerOn(state.bookmark.x+0.5, state.bookmark.y+8); renderColumn(); broadcastSel(); } }
+  else if(b.dataset.bm==='clear'){ state.bookmark=null; setWsStatus('Bookmark cleared.'); }
+  closeMenus(); updateBmBtn(); scheduleRender();
+});
+
+/* teleport */
+let tpY=localStorage.getItem('mcmp_tpY');   // string or null
+$('tpBtn').onclick=e=>{ e.stopPropagation(); showMenu($('tpMenu'), $('tpBtn')); };
+function askY(def){ const v=prompt('Y level (elevation) for /tp:', def); if(v===null) return null; const n=parseInt(v,10); return String(isNaN(n)?def:n); }
+function copyText(t){
+  const ok=()=>setWsStatus('Copied: '+t);
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(ok,()=>fallbackCopy(t,ok)); }
+  else fallbackCopy(t,ok);
+}
+function fallbackCopy(t,ok){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); ok(); }catch(_){ setWsStatus('Copy manually: '+t); } ta.remove(); }
+$('tpMenu').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; closeMenus();
+  if(b.dataset.tp==='sety'){ const y=askY(tpY||'75'); if(y!==null){ tpY=y; localStorage.setItem('mcmp_tpY',tpY); setWsStatus('Y level set to '+tpY+'.'); } return; }
+  if(b.dataset.tp==='copy'){
+    if(!state.selected){ setWsStatus('Select a column first.'); return; }
+    if(tpY==null){ const y=askY('75'); if(y===null) return; tpY=y; localStorage.setItem('mcmp_tpY',tpY); }
+    const wx=state.selected.x+state.startX, wz=state.selected.y+state.startY;
+    copyText(`/tp ${wx} ${tpY} ${wz}`);
+  }
+});
+
 function navColumn(dir){
   if(!state.selected) return;
   let {x,y}=state.selected;
@@ -970,7 +1054,7 @@ function loadFromSource(img, opts){
     const guessH=Math.max(1,Math.min(32,Math.round(img.height/128)));
     state.mapsW=guessW; state.mapsH=guessH;
     $('mapsW').value=guessW; $('mapsH').value=guessH;
-    state.skip.clear(); state.done.clear(); state.selected=null; collist.style.display='none';
+    state.skip.clear(); state.done.clear(); state.selected=null; state.bookmark=null; updateBmBtn(); collist.style.display='none';
   }
   $('srcInfo').textContent=`Source ${img.width}×${img.height}px`+(currentImagePath?` · ${currentImagePath}`:'');
   $('drop').classList.add('hide');
@@ -1376,7 +1460,7 @@ $('wsDelete').onclick=async()=>{
   await backend().remove(currentWsId); currentWsId=''; await refreshWsList(''); setWsStatus('Deleted.');
 };
 $('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); if(cloud) cloud.updatePresence(); };
-$('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); if(cloud) cloud.updatePresence(); };
+$('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
 
 /* broadcast my highlighted column (no-op unless cloud presence is active) */
 function broadcastSel(){ if(cloud) cloud.updatePresence(); }
@@ -1443,7 +1527,7 @@ function renderPeerList(){
 /* init */
 $('wsName').value=localStorage.getItem('mcmp_username')||'';
 $('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn();
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn();
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 loadRepoList();
