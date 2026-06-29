@@ -381,10 +381,12 @@
     </div>
     <div id="authOverlay">
       <div id="authBox">
-        <h3>Join this workspace</h3>
-        <p>Sign in with GitHub to create &amp; edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.</p>
+        <h3 id="authTitle">Join this workspace</h3>
+        <p id="authMsg">Sign in with GitHub to create &amp; edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.</p>
         <button class="primary" id="authGithub">Sign in with GitHub</button>
         <button id="authGuest">Continue as guest (read-only)</button>
+        <button id="authSignout" style="display:none">Sign out</button>
+        <button id="authClose" style="display:none">Close</button>
         <div class="hint" id="authErr" style="color:var(--up); margin-top:10px"></div>
       </div>
     </div>
@@ -1409,7 +1411,9 @@ function updateConn(){
   else if(connState==='error'||!cloud){ cls='err'; txt='Cloud offline'; tip='Could not reach the cloud — working locally. Your changes are NOT shared.'; }
   else if(currentWsId){ const n=Object.keys(peers).length; cls='live'; txt=n?`Live · ${n+1} online`:'Live · just you'; tip='Connected to the shared workspace; edits and highlighted columns sync live.'; }
   else { cls='ready'; txt='Cloud ready'; tip='Connected to the cloud. Open or save a workspace to start collaborating.'; }
-  el.className='conn '+cls; el.innerHTML='<span class="dot"></span>'+txt; el.title=tip;
+  el.className='conn '+cls; el.innerHTML='<span class="dot"></span>'+txt;
+  el.style.cursor = cloud ? 'pointer' : 'default';
+  el.title = cloud ? tip+' · Click to manage sign-in.' : tip;
   const led=$('hubLed'), hub=$('hub');
   if(led) led.className='led '+cls;
   if(hub) hub.title=txt+' — '+tip;
@@ -1618,13 +1622,38 @@ async function initCloud(){
 
 /* reacts to Firebase sign-in / sign-out (cloud mode only) */
 async function onAuthChanged(){
-  applyRoleUI();
+  applyRoleUI(); updateAuthOverlay();
   if(!role){ $('authOverlay').classList.add('show'); return; }   // need a choice: GitHub or guest
   $('authOverlay').classList.remove('show');
   if(role==='github' && !$('wsName').value){ $('wsName').value=ghLogin; localStorage.setItem('mcmp_username',ghLogin); }
   await refreshWsList();
   updateConn();
 }
+/* sign-in / account panel content adapts to current role; can be opened from the badge */
+function updateAuthOverlay(){
+  const t=$('authTitle'), m=$('authMsg'), gh=$('authGithub'), guest=$('authGuest'), so=$('authSignout'), cl=$('authClose');
+  if(!t) return;
+  $('authErr').textContent='';
+  if(role==='github'){
+    t.textContent='Signed in';
+    m.innerHTML='Signed in as <b>'+ghLogin+'</b> — full read/write access.';
+    gh.style.display='none'; guest.style.display='none'; so.style.display=''; cl.style.display='';
+  } else if(role==='guest'){
+    t.textContent='Viewing as guest';
+    m.textContent='Guests are read-only. Sign in with GitHub to create, edit, and publish.';
+    gh.style.display=''; gh.textContent='Sign in with GitHub'; guest.style.display='none'; so.style.display='none';
+    cl.style.display=''; cl.textContent='Stay as guest';
+  } else {
+    t.textContent='Join this workspace';
+    m.textContent='Sign in with GitHub to create & edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.';
+    gh.style.display=''; gh.textContent='Sign in with GitHub'; guest.style.display=''; so.style.display='none'; cl.style.display='none';
+  }
+}
+function openAuthOverlay(){ if(!cloud) return; updateAuthOverlay(); $('authOverlay').classList.add('show'); }
+$('conn').onclick=()=>openAuthOverlay();
+$('authClose') && ($('authClose').onclick=()=>$('authOverlay').classList.remove('show'));
+$('authSignout') && ($('authSignout').onclick=async()=>{ if(cloud) await cloud.signOutUser(); });
+$('authOverlay').onclick=e=>{ if(e.target.id==='authOverlay' && role) $('authOverlay').classList.remove('show'); };
 
 /* enable/disable write controls + identity line per role */
 function applyRoleUI(){
