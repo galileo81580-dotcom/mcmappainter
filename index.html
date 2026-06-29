@@ -52,6 +52,8 @@
   .row.between{justify-content:space-between}
   label{color:var(--txt)}
   .hint{color:var(--muted); font-size:11px; line-height:1.5; margin:6px 0}
+  .seclabel{font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:14px 0 6px; padding-top:10px; border-top:1px solid var(--line)}
+  .seclabel:first-child{margin-top:2px; padding-top:0; border-top:none}
   input[type=text],input[type=number],select{
     background:var(--panel2); border:1px solid var(--line); color:var(--txt);
     border-radius:6px; padding:6px 8px; font:inherit; width:100%;
@@ -225,43 +227,26 @@
   </header>
 
   <aside id="sidebar">
-    <!-- WORKSPACE -->
+    <!-- WORKSPACE (image + settings + saved state) -->
     <div class="sec" data-sec="workspace">
       <div class="head">Workspace <span class="chev">▾</span></div>
       <div class="body">
-        <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select></div>
-        <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Save as…</button></div>
-        <div class="btnrow" style="margin-top:8px"><button id="wsNew">New</button><button id="wsDelete">Delete</button></div>
-        <div class="hint" id="wsStatus"></div>
-        <div class="row between" style="margin-top:6px"><label style="flex:none">Your name</label>
-          <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
-          <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
-        <div class="hint" id="wsPeers"></div>
-      </div>
-    </div>
+        <div class="seclabel">Open a saved workspace</div>
+        <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select>
+          <button class="sm" id="wsDelete" title="Delete this workspace">🗑</button></div>
 
-    <!-- IMAGE -->
-    <div class="sec" data-sec="image">
-      <div class="head">Image <span class="chev">▾</span></div>
-      <div class="body">
+        <div class="seclabel">New workspace — from an image</div>
         <div class="btnrow">
           <button class="primary" id="loadBtn">Load image…</button>
           <button id="sampleBtn">Sample</button>
         </div>
         <input type="file" id="fileInput" accept="image/*" hidden>
         <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Load.</div>
-
-        <div class="hint" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">Shared image library (in repo)</div>
-        <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— pick a shared image —</option></select>
+        <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— or pick a shared image —</option></select>
           <button class="sm" id="repoRefresh" title="Refresh list">⟳</button></div>
-        <button class="sm" id="repoPublish" style="width:100%;margin-top:6px">Publish current image to repo…</button>
-        <details style="margin-top:8px">
-          <summary class="hint" style="cursor:pointer">GitHub upload token (for publishing)</summary>
-          <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
-          <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Needed only to <i>publish</i> an image — viewing shared images needs nothing. Collaborators can contribute their own images too: ask the repo owner to add you as a collaborator, then use your own token.</div>
-        </details>
 
-        <div class="row between" style="margin-top:10px"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
+        <div class="seclabel">Size</div>
+        <div class="row between"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
         <div class="row between"><label>Maps tall</label><input type="number" id="mapsH" min="1" max="32" value="1"></div>
         <div class="row between"><label>Fit</label>
           <select id="fit" style="width:120px">
@@ -271,6 +256,22 @@
           </select>
         </div>
         <div class="hint">1 map = 128×128 blocks.</div>
+
+        <div class="seclabel">Save &amp; share</div>
+        <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Save as…</button></div>
+        <button class="sm" id="repoPublish" style="width:100%;margin-top:6px">Publish image to repo (share with others)…</button>
+        <details style="margin-top:8px">
+          <summary class="hint" style="cursor:pointer">GitHub upload token (for publishing)</summary>
+          <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
+          <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Needed only to <i>publish</i> an image — viewing shared images needs nothing. Collaborators can contribute their own images too: ask the repo owner to add you as a collaborator, then use your own token.</div>
+        </details>
+        <div class="hint" id="wsStatus"></div>
+
+        <div class="seclabel">Collaboration</div>
+        <div class="row between"><label style="flex:none">Your name</label>
+          <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
+          <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
+        <div class="hint" id="wsPeers"></div>
       </div>
     </div>
 
@@ -1100,18 +1101,20 @@ function loadFromSource(img, opts){
 }
 function loadFile(file){
   if(!file || !file.type.startsWith('image/')) return;
+  beginNewWorkspace();                                                // loading an image = a new workspace
   currentImagePath=''; lastImageBlob=file; lastImageName=file.name;   // local-only until published
   const img=new Image();
-  img.onload=()=>{ loadFromSource(img); touchWorkspace(); };
+  img.onload=()=>{ loadFromSource(img); setWsStatus('New workspace — “Save as…” to keep it.'); };
   img.src=URL.createObjectURL(file);
 }
 $('loadBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
 $('sampleBtn').onclick=()=>{
   // the original pre-dithered map art, at the original app's exact settings
+  beginNewWorkspace();
   currentImagePath=''; lastImageBlob=null; lastImageName='sunset-dither.png';
   const img=new Image();
-  img.onload=()=>loadFromSource(img,{exact:true});
+  img.onload=()=>{ loadFromSource(img,{exact:true}); setWsStatus('New workspace from sample — “Save as…” to keep it.'); };
   img.onerror=()=>{ $('srcInfo').textContent='Could not load sample image (examples/sunset-dither.png).'; };
   img.src='examples/sunset-dither.png';
 };
@@ -1446,12 +1449,18 @@ async function publishImage(){
   }catch(e){ setWsStatus('Publish failed: '+e.message); }
 }
 $('repoRefresh').onclick=loadRepoList;
-$('repoImgSelect').onchange=()=>{ const p=$('repoImgSelect').value; if(p) loadRepoImage(p); };
+$('repoImgSelect').onchange=()=>{ const p=$('repoImgSelect').value; if(p){ beginNewWorkspace(); loadRepoImage(p); } };
 $('repoPublish').onclick=publishImage;
 $('ghToken').value=localStorage.getItem('mcmp_gh_token')||'';
 $('ghToken').oninput=()=>localStorage.setItem('mcmp_gh_token',$('ghToken').value);
 
 let unsubscribeWs=null;
+// detach from any open/saved workspace so the next image load is a fresh workspace
+function beginNewWorkspace(){
+  if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
+  if(cloud) cloud.leavePresence();
+  currentWsId=''; $('wsSelect').value=''; updateConn();
+}
 async function openWorkspace(id){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
@@ -1480,7 +1489,6 @@ $('wsSave').onclick=async()=>{
   await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓');
 };
 $('wsSaveAs').onclick=saveAsWorkspace;
-$('wsNew').onclick=()=>{ openWorkspace(''); setWsStatus('New unsaved workspace — use “Save as…” to keep it.'); };
 $('wsDelete').onclick=async()=>{
   if(!currentWsId){ setWsStatus('Nothing to delete.'); return; }
   if(!confirm('Delete workspace “'+(wsNames[currentWsId]||'')+'”?')) return;
