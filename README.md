@@ -56,16 +56,28 @@ python3 -m http.server 8000
 ## Optional: shared workspaces + multi-user (Firebase)
 
 Saved workspaces work locally (browser storage) with no setup. To make them shared across
-people and devices — and to enable live multi-user presence — add a Firebase project. It runs
-entirely on the **free Spark plan** (no credit card, no hosting fee): this app uses only
-**Firestore** (workspaces) and **Realtime Database** (presence), and deliberately avoids Cloud
-Storage and Cloud Functions, which are the only parts that would require the paid plan.
+people and devices — and to enable live multi-user presence — add a Firebase project. This app
+uses only **Firestore** (workspaces) and **Realtime Database** (presence) and avoids Cloud
+Storage / Cloud Functions, so it stays within the **free tier**. (If your project already has
+billing enabled it'll be on the **Blaze** plan, which *includes* that same free tier — this
+app's usage is negligible, so it's effectively $0. Set a GCP **budget alert** for peace of mind.)
+
+**Access model:** users **sign in with GitHub** to create/edit shared workspaces and publish
+images; that same sign-in also provides the repo token for publishing (no manual PAT). Anyone
+can instead **continue as a guest** for read-only viewing — guests can open workspaces and watch
+others' highlighted columns, but can't save, edit, or publish.
 
 1. In the [Firebase console](https://console.firebase.google.com/), use your existing project
-   (e.g. `mcmappainter`) or create one. Stay on the **Spark (free)** plan.
-2. Enable **Firestore Database**, **Realtime Database**, and **Authentication → Anonymous**.
+   (e.g. `mcmappainter`) or create one.
+2. Enable **Firestore Database**, **Realtime Database**, and two sign-in methods under
+   **Authentication → Sign-in method**: **Anonymous** (for guests) and **GitHub**.
+   - GitHub requires a **GitHub OAuth App**: GitHub → Settings → Developer settings → OAuth Apps
+     → *New OAuth App*. Set the **Authorization callback URL** to the value Firebase shows when
+     you enable the GitHub provider (e.g. `https://<project>.firebaseapp.com/__/auth/handler`).
+     Copy the **Client ID** + **Client secret** into Firebase's GitHub provider config.
 3. Apply the security rules in [`firebase/`](firebase/): `firestore.rules` and
    `database.rules.json` (paste them in the console, or `firebase deploy --only firestore:rules,database`).
+   These allow **read** for any signed-in user (incl. guests) and **write** only for GitHub users.
 4. Project settings → *Your apps* → **Web app** → copy the config object, and paste it into
    `index.html` where it says:
    ```js
@@ -73,11 +85,14 @@ Storage and Cloud Functions, which are the only parts that would require the pai
    ```
    e.g. `const FIREBASE_CONFIG = { apiKey:"…", authDomain:"…", projectId:"…", databaseURL:"…", appId:"…" };`
    (Make sure `databaseURL` is present — it appears once Realtime Database is enabled.)
+5. *(Recommended)* GCP Console → **Billing → Budgets & alerts** → create a small budget (e.g. $1)
+   so you're emailed if usage ever leaves the free tier.
 
-That's it. With a config present, the Workspace dropdown reads/writes to the cloud and everyone
-on the same workspace sees each other's highlighted columns in real time. A **connection badge**
-in the header always shows the current state (Local only / Connecting / Cloud ready / Live ·
-N online / Cloud offline) — the fallback to local is never silent.
+That's it. With a config present, the app prompts each visitor to sign in with GitHub or continue
+as a guest; GitHub users read/write shared workspaces and see each other's highlighted columns in
+real time. A **connection badge** in the header (and an LED in the column control-pad) always
+shows the current state (Local only / Connecting / Cloud ready / Live · N online / Cloud
+offline) — the fallback to local is never silent.
 
 ### Shared image library (in the repo)
 

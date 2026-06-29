@@ -1,10 +1,12 @@
 rules_version = '2';
-// Saved workspaces. Anonymous Auth is enough for a small collaborative tool;
-// any signed-in (incl. anonymous) user may read/write workspaces.
+// Workspaces. Anyone signed in (incl. anonymous "guests") may READ.
+// Only GitHub-authenticated users may WRITE — guests are read-only.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /workspaces/{id} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.firebase.sign_in_provider == 'github.com';
     }
   }
 }

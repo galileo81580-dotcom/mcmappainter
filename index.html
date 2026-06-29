@@ -146,6 +146,16 @@
   .popmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:7px 10px; border-radius:5px; font:inherit; cursor:pointer}
   .popmenu button:hover{background:var(--panel2)}
   .popmenu button:disabled{color:var(--muted); cursor:default; background:none}
+
+  /* sign-in prompt */
+  #authOverlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:210; display:none; align-items:center; justify-content:center; padding:24px}
+  #authOverlay.show{display:flex}
+  #authBox{background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:24px; max-width:380px; text-align:center}
+  #authBox h3{margin:0 0 8px; font-size:17px}
+  #authBox p{color:var(--muted); font-size:13px; line-height:1.55; margin:0 0 18px}
+  #authBox button{width:100%; padding:10px; margin-top:8px}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  button:disabled:hover{border-color:var(--line); color:var(--txt)}
   #collist .rows{padding:6px 12px 12px}
   #collist .rhead{display:flex; gap:8px; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; padding:0 0 4px; margin-bottom:3px; border-bottom:1px solid var(--line)}
   #collist .rhead .i{width:calc(20px*var(--cs)); text-align:right}
@@ -268,6 +278,7 @@
         <div class="hint" id="wsStatus"></div>
 
         <div class="seclabel">Collaboration</div>
+        <div class="row between"><span class="hint" id="authStatus" style="margin:0"></span><button class="sm" id="authBtn" style="display:none">Sign in with GitHub</button></div>
         <div class="row between"><label style="flex:none">Your name</label>
           <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
           <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
@@ -379,6 +390,14 @@
     <div class="popmenu" id="tpMenu">
       <button data-tp="copy">📋 Copy /tp command</button>
       <button data-tp="sety">⛰ Set Y level…</button>
+    </div>
+    <div id="authOverlay">
+      <div id="authBox">
+        <h3>Join this workspace</h3>
+        <p>Sign in with GitHub to create &amp; edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.</p>
+        <button class="primary" id="authGithub">Sign in with GitHub</button>
+        <button id="authGuest">Continue as guest (read-only)</button>
+      </div>
     </div>
     <div class="float" id="mini">
       <canvas id="miniCv" width="160" height="160"></canvas>
@@ -556,6 +575,10 @@ let peers={};                // uid -> {name,color,x,y} other users' highlighted
 let currentImagePath='';     // repo path of the active shared image ('' = local/unshared)
 let lastImageBlob=null, lastImageName='';  // bytes of the last-loaded local image (for publishing)
 let connState='init';        // 'init'|'connecting'|'ok'|'error' — Firebase connection
+let role=null;               // null (no cloud / not signed in) | 'github' (read+write) | 'guest' (read-only)
+let ghLogin='';              // GitHub username when signed in
+// write allowed when there's no cloud (pure local) OR you're a GitHub user; guests are read-only
+function canWrite(){ return !cloud || role==='github'; }
 
 /* ===== DOM ===== */
 const $=id=>document.getElementById(id);
@@ -1349,7 +1372,7 @@ const backend=()=> cloud ? cloud.store : localBackend;
 
 let wsNames={};              // id -> name (for dropdown)
 async function refreshWsList(selId){
-  const items=await backend().list();
+  let items=[]; try{ items=await backend().list(); }catch(e){ items=[]; }
   wsNames={}; items.forEach(i=>wsNames[i.id]=i.name);
   const sel=$('wsSelect');
   const cur = selId!==undefined ? selId : currentWsId;
@@ -1361,7 +1384,7 @@ async function refreshWsList(selId){
 /* debounced autosave of the active workspace */
 let wsSaveTimer=null;
 function touchWorkspace(){
-  if(applying || !currentWsId) return;
+  if(applying || !currentWsId || !canWrite()) return;
   clearTimeout(wsSaveTimer);
   wsSaveTimer=setTimeout(async()=>{
     try{ await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓'); }
@@ -1419,8 +1442,9 @@ function loadRepoImage(path, opts){
   img.src=rawUrl(path);
 }
 async function publishImage(){
+  if(cloud && role!=='github'){ setWsStatus(GUESTMSG); return; }
   const token=($('ghToken').value||'').trim();
-  if(!token){ setWsStatus('Enter a GitHub token (Image ▸ GitHub upload token) to publish.'); return; }
+  if(!token){ setWsStatus('Sign in with GitHub, or paste a token, to publish.'); return; }
   localStorage.setItem('mcmp_gh_token',token);
   if(!srcImage){ setWsStatus('Load an image first.'); return; }
   let blob=lastImageBlob, defName=lastImageName||'image.png';
@@ -1475,7 +1499,9 @@ async function openWorkspace(id){
   }
   updateConn();
 }
+const GUESTMSG='Sign in with GitHub to edit (guests are read-only).';
 async function saveAsWorkspace(){
+  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
   const name=prompt('Workspace name:', captureWorkspace().name); if(name===null) return;
   const id=genId(); currentWsId=id;
   await backend().save(id, captureWorkspace(name.trim()||'Untitled'));
@@ -1485,11 +1511,13 @@ async function saveAsWorkspace(){
 }
 $('wsSelect').onchange=()=>openWorkspace($('wsSelect').value);
 $('wsSave').onclick=async()=>{
+  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
   if(!currentWsId) return saveAsWorkspace();
   await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓');
 };
 $('wsSaveAs').onclick=saveAsWorkspace;
 $('wsDelete').onclick=async()=>{
+  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
   if(!currentWsId){ setWsStatus('Nothing to delete.'); return; }
   if(!confirm('Delete workspace “'+(wsNames[currentWsId]||'')+'”?')) return;
   await backend().remove(currentWsId); currentWsId=''; await refreshWsList(''); setWsStatus('Deleted.');
@@ -1497,8 +1525,8 @@ $('wsDelete').onclick=async()=>{
 $('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); if(cloud) cloud.updatePresence(); };
 $('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
 
-/* broadcast my highlighted column (no-op unless cloud presence is active) */
-function broadcastSel(){ if(cloud) cloud.updatePresence(); }
+/* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
+function broadcastSel(){ if(cloud && canWrite()) cloud.updatePresence(); }
 
 /* ---- Firebase cloud backend (loaded only when configured) ---- */
 async function initCloud(){
@@ -1506,14 +1534,13 @@ async function initCloud(){
   connState='connecting'; updateConn();
   try{
     const V='https://www.gstatic.com/firebasejs/10.12.0/';
-    const [{initializeApp},{getAuth,signInAnonymously,onAuthStateChanged},fs,db]=await Promise.all([
+    const [{initializeApp},authMod,fs,db]=await Promise.all([
       import(V+'firebase-app.js'), import(V+'firebase-auth.js'),
       import(V+'firebase-firestore.js'), import(V+'firebase-database.js')
     ]);
+    const {getAuth,onAuthStateChanged,signInAnonymously,signOut,signInWithPopup,GithubAuthProvider,getAdditionalUserInfo}=authMod;
     const app=initializeApp(FIREBASE_CONFIG);
     const auth=getAuth(app); const store=fs.getFirestore(app); const rtdb=db.getDatabase(app);
-    await signInAnonymously(auth);
-    await new Promise(res=>onAuthStateChanged(auth,u=>{ if(u){ myUid=u.uid; res(); } }));
 
     const col=fs.collection(store,'workspaces');
     const cloudStore={
@@ -1528,29 +1555,83 @@ async function initCloud(){
       store:cloudStore,
       subscribe(id,cb){ return fs.onSnapshot(fs.doc(col,id),d=>cb(d.exists()?d.data():null)); },
       joinPresence(id){
-        if(!id){ return; }
-        presRef=db.ref(rtdb,'presence/'+id+'/'+myUid);
-        db.onDisconnect(presRef).remove();
-        this.updatePresence();
+        if(!id) return;
         const listRef=db.ref(rtdb,'presence/'+id);
         this._unsub=db.onValue(listRef,snap=>{
           const val=snap.val()||{}; const next={};
           for(const uid in val){ if(uid===myUid) continue; next[uid]=val[uid]; }
           peers=next; renderPeerList(); scheduleRender();
         });
+        if(canWrite()){                                  // guests don't broadcast presence
+          presRef=db.ref(rtdb,'presence/'+id+'/'+myUid);
+          db.onDisconnect(presRef).remove();
+          this.updatePresence();
+        }
       },
       leavePresence(){ if(this._unsub){this._unsub();this._unsub=null;} if(presRef){ db.remove(presRef); presRef=null; } peers={}; renderPeerList(); },
       updatePresence(){
-        if(!presRef) return;
+        if(!presRef || !canWrite()) return;
         const s=state.selected;
         db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,ts:Date.now()});
-      }
+      },
+      async signInGitHub(){
+        const provider=new GithubAuthProvider(); provider.addScope('public_repo');
+        const res=await signInWithPopup(auth, provider);
+        const cred=GithubAuthProvider.credentialFromResult(res);
+        if(cred && cred.accessToken){ localStorage.setItem('mcmp_gh_token',cred.accessToken); $('ghToken').value=cred.accessToken; }
+        const info=getAdditionalUserInfo(res); if(info && info.username){ ghLogin=info.username; localStorage.setItem('mcmp_gh_login',ghLogin); }
+      },
+      signInGuest(){ return signInAnonymously(auth); },
+      signOutUser(){ return signOut(auth); }
     };
-    connState='ok'; setWsStatus('Connected to cloud ✓'); updateConn();
+
+    onAuthStateChanged(auth, u=>{
+      if(u){
+        myUid=u.uid;
+        role = u.isAnonymous ? 'guest' : 'github';
+        if(role==='github'){ ghLogin = ghLogin || localStorage.getItem('mcmp_gh_login') || u.displayName || 'github user'; }
+        onAuthChanged();
+      } else {
+        role=null; myUid='local'; onAuthChanged();
+      }
+    });
+
+    connState='ok'; updateConn();
   }catch(e){
     cloud=null; connState='error'; setWsStatus('Cloud unavailable ('+e.message+'); using local.'); updateConn();
+    refreshWsList();
   }
 }
+
+/* reacts to Firebase sign-in / sign-out (cloud mode only) */
+async function onAuthChanged(){
+  applyRoleUI();
+  if(!role){ $('authOverlay').classList.add('show'); return; }   // need a choice: GitHub or guest
+  $('authOverlay').classList.remove('show');
+  if(role==='github' && !$('wsName').value){ $('wsName').value=ghLogin; localStorage.setItem('mcmp_username',ghLogin); }
+  await refreshWsList();
+  updateConn();
+}
+
+/* enable/disable write controls + identity line per role */
+function applyRoleUI(){
+  const guest = cloud && role==='guest';
+  ['wsSave','wsSaveAs','wsDelete','repoPublish'].forEach(id=>{ const b=$(id); if(b) b.disabled=!!guest; });
+  const s=$('authStatus'), btn=$('authBtn');
+  if(!cloud){ if(s) s.textContent=''; if(btn) btn.style.display='none'; return; }
+  if(btn) btn.style.display='';
+  if(role==='github'){ if(s) s.innerHTML=`Signed in as <b>${ghLogin}</b>`; if(btn) btn.textContent='Sign out'; }
+  else if(role==='guest'){ if(s) s.innerHTML='Viewing as <b>guest</b> (read-only)'; if(btn) btn.textContent='Sign in with GitHub'; }
+  else { if(s) s.textContent='Not signed in'; if(btn) btn.textContent='Sign in with GitHub'; }
+}
+async function authSignInGitHub(){ try{ await cloud.signInGitHub(); }catch(e){ setWsStatus('GitHub sign-in failed: '+e.message); } }
+$('authBtn') && ($('authBtn').onclick=async()=>{
+  if(!cloud) return;
+  if(role==='github'){ await cloud.signOutUser(); }   // -> onAuthChanged shows the prompt
+  else { authSignInGitHub(); }
+});
+$('authGithub') && ($('authGithub').onclick=authSignInGitHub);
+$('authGuest') && ($('authGuest').onclick=()=>cloud && cloud.signInGuest());
 function renderPeerList(){
   updateConn();
   const n=Object.keys(peers).length;
@@ -1566,7 +1647,8 @@ recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 loadRepoList();
-initCloud().finally(()=>refreshWsList());
+applyRoleUI();
+initCloud().finally(()=>{ if(!cloud) refreshWsList(); });   // cloud mode lists after auth (onAuthChanged)
 </script>
 </body>
 </html>
