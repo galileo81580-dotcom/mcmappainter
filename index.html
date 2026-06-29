@@ -225,89 +225,118 @@
   .conn.err{color:var(--up)} .conn.err .dot{background:var(--up)}
   .conn.connecting .dot{background:var(--warn); animation:cpulse 1s infinite}
   @keyframes cpulse{50%{opacity:.25}}
+  .conn .avatar{width:18px; height:18px; border-radius:50%; object-fit:cover; display:none}
+  .conn.id .avatar{display:inline-block}
+
+  /* header identity extras */
+  .mcbtn{display:inline-flex; align-items:center; justify-content:center; width:30px; height:26px; border-radius:7px; background:var(--panel2); border:1px solid var(--line); cursor:pointer; font-size:13px; opacity:.5; filter:grayscale(1)}
+  .mcbtn.on{opacity:1; filter:none; border-color:var(--good); background:rgba(70,196,106,.16)}
+  .peerstack{display:flex; align-items:center}
+  .peerstack .peerav{margin-left:-9px}
+  .peerstack .peerav:first-child{margin-left:0}
+  .peerav{width:26px; height:26px; border-radius:50%; border:2px solid var(--panel); background:#3a404c; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; cursor:pointer; position:relative; flex:none}
+  .peerav img{width:100%; height:100%; border-radius:50%; object-fit:cover}
+  .peerav.idle{opacity:.4}
+  .peerav .mc{position:absolute; right:-3px; bottom:-3px; font-size:10px; line-height:1}
+  .peerpop{position:fixed; display:none; z-index:60; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:6px; min-width:210px}
+  .peerpop.show{display:block}
+  .peerpop .prow{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer}
+  .peerpop .prow:hover{background:var(--panel2)}
+  .peerpop .pav{width:22px; height:22px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; overflow:hidden}
+  .peerpop .pav img{width:100%; height:100%; object-fit:cover}
+
+  /* collapsible sub-sections inside Workspace */
+  .subsec{border:1px solid var(--line); border-radius:8px; margin:8px 0; overflow:hidden; background:var(--bg)}
+  .subsec > .subhead{display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--txt); background:var(--panel2)}
+  .subsec > .subhead .chev{margin-left:auto; color:var(--muted); transition:transform .15s}
+  .subsec.collapsed > .subhead .chev{transform:rotate(-90deg)}
+  .subsec > .subbody{padding:8px 10px}
+  .subsec.collapsed > .subbody{display:none}
+  .tinylbl{display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:11px 0 4px}
+  .tinylbl:first-child{margin-top:2px}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>MC Map Painter <span class="dim">· staircase guide</span></h1>
+    <h1>MC Map Painter <span class="dim" id="wsTitle">· untitled</span></h1>
     <span class="spacer"></span>
     <span class="stat" id="dims"></span>
     <span class="stat" id="zoomstat"></span>
-    <span class="conn local" id="conn"><span class="dot"></span>Local only</span>
+    <div class="peerstack" id="peerStack"></div>
+    <button class="mcbtn" id="ingame" title="Toggle: I'm in Minecraft" style="display:none">🟩</button>
+    <span class="conn local" id="conn"><span class="dot"></span><img class="avatar" id="myAvatar" alt=""><span id="connLabel">Local only</span></span>
   </header>
+  <div class="peerpop" id="peerPop"></div>
 
   <aside id="sidebar">
     <!-- WORKSPACE (image + settings + saved state) -->
-    <div class="sec" data-sec="workspace">
+    <div class="sec collapsed" data-sec="workspace">
       <div class="head">Workspace <span class="chev">▾</span></div>
       <div class="body">
-        <div class="seclabel">Open a saved workspace</div>
-        <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select>
-          <button class="sm" id="wsDelete" title="Delete this workspace">🗑</button></div>
 
-        <div class="seclabel">New workspace — from an image</div>
-        <div class="btnrow">
-          <button class="primary" id="loadBtn">Load image…</button>
-          <button id="sampleBtn">Sample</button>
+        <div class="subsec collapsed" data-sub="open">
+          <div class="subhead">Open / create <span class="chev">▾</span></div>
+          <div class="subbody">
+            <label class="tinylbl">Open a saved workspace</label>
+            <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select>
+              <button class="sm" id="wsDelete" title="Delete this workspace">🗑</button></div>
+
+            <label class="tinylbl">New from an image</label>
+            <div class="btnrow"><button class="primary" id="loadBtn">Upload image…</button></div>
+            <input type="file" id="fileInput" accept="image/*" hidden>
+            <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Upload.</div>
+            <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— or pick a shared image —</option></select>
+              <button class="sm" id="repoRefresh" title="Refresh list">⟳</button></div>
+            <details style="margin-top:8px">
+              <summary class="hint" style="cursor:pointer">GitHub upload token (only if not signed in with GitHub)</summary>
+              <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
+              <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo, stored only in this browser. Signing in with GitHub fills this automatically.</div>
+            </details>
+
+            <label class="tinylbl">Save</label>
+            <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Make a copy…</button></div>
+            <div class="hint" id="wsStatus"></div>
+          </div>
         </div>
-        <input type="file" id="fileInput" accept="image/*" hidden>
-        <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Load.</div>
-        <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— or pick a shared image —</option></select>
-          <button class="sm" id="repoRefresh" title="Refresh list">⟳</button></div>
 
-        <div class="seclabel">Size</div>
-        <div class="row between"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
-        <div class="row between"><label>Maps tall</label><input type="number" id="mapsH" min="1" max="32" value="1"></div>
-        <div class="row between"><label>Fit</label>
-          <select id="fit" style="width:120px">
-            <option value="contain">Contain</option>
-            <option value="cover">Cover (crop)</option>
-            <option value="stretch">Stretch</option>
-          </select>
+        <div class="subsec collapsed" data-sub="size">
+          <div class="subhead">Size &amp; alignment <span class="chev">▾</span></div>
+          <div class="subbody">
+            <div class="row between"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
+            <div class="row between"><label>Maps tall</label><input type="number" id="mapsH" min="1" max="32" value="1"></div>
+            <div class="row between"><label>Fit</label>
+              <select id="fit" style="width:120px">
+                <option value="contain">Contain</option>
+                <option value="cover">Cover (crop)</option>
+                <option value="stretch">Stretch</option>
+              </select>
+            </div>
+            <div class="hint">1 map = 128×128 blocks.</div>
+            <div class="row" style="margin-top:8px"><label style="flex:none">Upper-left X,Z</label>
+              <input type="text" id="startX" value="-26176" style="width:80px">
+              <input type="text" id="startY" value="6208" style="width:80px"></div>
+            <div class="hint" id="chunkInfo"></div>
+          </div>
         </div>
-        <div class="hint">1 map = 128×128 blocks.</div>
 
-        <div class="seclabel">Colour matching</div>
-        <div class="row between"><label>Dithering</label>
-          <select id="algo" style="width:150px">
-            <option value="fs">Floyd–Steinberg</option>
-            <option value="ordered">Ordered (4×4)</option>
-            <option value="none">None (nearest)</option>
-          </select>
+        <div class="subsec collapsed" data-sub="colour">
+          <div class="subhead">Colours &amp; materials <span class="chev">▾</span></div>
+          <div class="subbody">
+            <div class="row between"><label>Dithering</label>
+              <select id="algo" style="width:150px">
+                <option value="fs">Floyd–Steinberg</option>
+                <option value="ordered">Ordered (4×4)</option>
+                <option value="none">None (nearest)</option>
+              </select>
+            </div>
+            <button class="primary" id="prefsBtn" style="width:100%;margin-top:6px">Block preferences…</button>
+            <div class="hint" id="prefStat" style="margin-top:6px"></div>
+            <label class="tinylbl">Materials list</label>
+            <div id="shop"></div>
+          </div>
         </div>
-        <div class="hint">Choose which block you'll use for each map colour, in preference order. Disabled colours are excluded from matching.</div>
-        <button class="primary" id="prefsBtn" style="width:100%">Block preferences…</button>
-        <div class="hint" id="prefStat" style="margin-top:8px"></div>
 
-        <div class="seclabel">World alignment</div>
-        <div class="row"><label style="flex:none">Upper-left X,Z</label>
-          <input type="text" id="startX" value="-26176" style="width:80px">
-          <input type="text" id="startY" value="6208" style="width:80px"></div>
-        <div class="hint" id="chunkInfo"></div>
-
-        <div class="seclabel">Materials list</div>
-        <div class="hint">Counts exclude skipped maps.</div>
-        <div id="shop"></div>
-
-        <div class="seclabel">Save &amp; share</div>
-        <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Save as…</button></div>
-        <button class="sm" id="repoPublish" style="width:100%;margin-top:6px">Publish image to repo (share with others)…</button>
-        <details style="margin-top:8px">
-          <summary class="hint" style="cursor:pointer">GitHub upload token (for publishing)</summary>
-          <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
-          <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Needed only to <i>publish</i> an image — viewing shared images needs nothing. Collaborators can contribute their own images too: ask the repo owner to add you as a collaborator, then use your own token.</div>
-        </details>
-        <div class="hint" id="wsStatus"></div>
-
-        <div class="seclabel">Collaboration</div>
-        <div class="row between"><span class="hint" id="authStatus" style="margin:0"></span><button class="sm" id="authBtn" style="display:none">Sign in with GitHub</button></div>
-        <div class="row between"><label style="flex:none">Your name</label>
-          <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:110px">
-          <input type="color" id="wsColor" value="#4f9dff" title="Your highlight colour" style="width:34px;padding:2px"></div>
-        <label class="switch"><span class="lbl">I'm in Minecraft 🎮</span><input type="checkbox" id="ingame"><span class="track"></span></label>
-        <div class="hint">Auto-marks you idle after 15 min without touching the map.</div>
-        <div class="hint" id="wsPeers"></div>
       </div>
     </div>
 
@@ -326,7 +355,7 @@
     </div>
 
     <!-- EXPORT -->
-    <div class="sec" data-sec="export">
+    <div class="sec collapsed" data-sec="export">
       <div class="head">Export <span class="chev">▾</span></div>
       <div class="body">
         <div class="btnrow"><button id="expPng">Dithered PNG (1×)</button></div>
@@ -383,6 +412,12 @@
       <div id="authBox">
         <h3 id="authTitle">Join this workspace</h3>
         <p id="authMsg">Sign in with GitHub to create &amp; edit shared workspaces and publish images. Or continue as a guest to view in read-only mode.</p>
+        <div id="authProfile" style="display:none; text-align:left; margin:6px 0 12px">
+          <div class="row between"><label style="flex:none">Display name</label>
+            <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:150px"></div>
+          <div class="row between"><label style="flex:none">Highlight colour</label>
+            <input type="color" id="wsColor" value="#4f9dff" style="width:40px;padding:2px"></div>
+        </div>
         <button class="primary" id="authGithub">Sign in with GitHub</button>
         <button id="authGuest">Continue as guest (read-only)</button>
         <button id="authSignout" style="display:none">Sign out</button>
@@ -1136,20 +1171,16 @@ function loadFile(file){
   beginNewWorkspace();                                                // loading an image = a new workspace
   currentImagePath=''; lastImageBlob=file; lastImageName=file.name;   // local-only until published
   const img=new Image();
-  img.onload=()=>{ loadFromSource(img); setWsStatus('New workspace — “Save as…” to keep it.'); };
+  img.onload=()=>{
+    loadFromSource(img);
+    // signed in with GitHub: uploading publishes to the shared repo so others get the same image
+    if(cloud && role==='github'){ setWsStatus('Uploading to shared library…'); publishImage(); }
+    else setWsStatus('Loaded locally — sign in with GitHub to share it.');
+  };
   img.src=URL.createObjectURL(file);
 }
 $('loadBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
-$('sampleBtn').onclick=()=>{
-  // the original pre-dithered map art, at the original app's exact settings
-  beginNewWorkspace();
-  currentImagePath=''; lastImageBlob=null; lastImageName='sunset-dither.png';
-  const img=new Image();
-  img.onload=()=>{ loadFromSource(img,{exact:true}); setWsStatus('New workspace from sample — “Save as…” to keep it.'); };
-  img.onerror=()=>{ $('srcInfo').textContent='Could not load sample image (examples/sunset-dither.png).'; };
-  img.src='examples/sunset-dither.png';
-};
 // drag & drop
 ['dragenter','dragover'].forEach(ev=>main.addEventListener(ev,e=>{e.preventDefault(); main.classList.add('dragover');}));
 ['dragleave','drop'].forEach(ev=>main.addEventListener(ev,e=>{e.preventDefault(); if(ev==='dragleave'&&e.relatedTarget&&main.contains(e.relatedTarget))return; main.classList.remove('dragover');}));
@@ -1321,8 +1352,9 @@ function download(canvas,name){ canvas.toBlob(b=>{ const a=document.createElemen
 $('expPng').onclick=()=>{ if(baseIdx) download(baseCanvas,'mcmap-dithered.png'); };
 $('expView').onclick=()=>{ if(baseIdx) download(view,'mcmap-view.png'); };
 
-/* section collapse */
+/* section + sub-section collapse */
 document.querySelectorAll('.sec[data-sec] > .head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
+document.querySelectorAll('.subsec > .subhead').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
 
 /* ===================================================================
    Workspaces (saved presets) + multi-user presence
@@ -1330,6 +1362,10 @@ document.querySelectorAll('.sec[data-sec] > .head').forEach(h=>h.onclick=()=>h.p
    - A workspace = settings + block prefs + done/skip (NOT the image).
    =================================================================== */
 let currentWsId='';          // '' = unsaved/local working state
+let currentWsOwner='';       // github login of the workspace creator
+const ADMIN_LOGIN='galileo81580-dotcom';
+function updateWsTitle(name){ const t=$('wsTitle'); if(t) t.textContent='· '+(name||'untitled'); }
+function canDeleteCurrent(){ return !cloud || (role==='github' && (currentWsOwner==='' || ghLogin===currentWsOwner || ghLogin===ADMIN_LOGIN)); }
 let cloud=null;              // populated by initCloud() when FIREBASE_CONFIG present
 let myUid='local-'+Math.random().toString(36).slice(2,8);
 
@@ -1343,6 +1379,7 @@ function captureWorkspace(name){
     mapsW:state.mapsW, mapsH:state.mapsH, fit:state.fit, algo:state.algo,
     startX:state.startX, startY:state.startY, colSize:state.colSize,
     imagePath: currentImagePath||'',
+    owner: currentWsOwner||'',
     prefs: JSON.parse(JSON.stringify(prefs)),
     done:[...state.done], skip:[...state.skip],
     updatedAt: Date.now()
@@ -1358,8 +1395,10 @@ function applyWorkspace(w){
   state.done=new Set(w.done||[]); state.skip=new Set(w.skip||[]);
   $('mapsW').value=state.mapsW; $('mapsH').value=state.mapsH; $('fit').value=state.fit; $('algo').value=state.algo;
   $('startX').value=state.startX; $('startY').value=state.startY;
+  currentWsOwner = w.owner||'';
+  updateWsTitle(w.name);
   savePrefs(); updateChunk(); applyColSize(); recomputeEnabled(); renderPrefs(); updatePrefStat();
-  processImage(); drawMini(); updateShop(); renderColumn();
+  processImage(); drawMini(); updateShop(); renderColumn(); applyRoleUI();
   applying=false;
   // load the workspace's shared image (if any, and not already loaded)
   const want=w.imagePath||'';
@@ -1411,9 +1450,15 @@ function updateConn(){
   else if(connState==='error'||!cloud){ cls='err'; txt='Cloud offline'; tip='Could not reach the cloud — working locally. Your changes are NOT shared.'; }
   else if(currentWsId){ const n=Object.keys(peers).length; cls='live'; txt=n?`Live · ${n+1} online`:'Live · just you'; tip='Connected to the shared workspace; edits and highlighted columns sync live.'; }
   else { cls='ready'; txt='Cloud ready'; tip='Connected to the cloud. Open or save a workspace to start collaborating.'; }
-  el.className='conn '+cls; el.innerHTML='<span class="dot"></span>'+txt;
+  // identity in the badge: avatar + name when signed in, else status text
+  const label = role==='github' ? ghLogin : role==='guest' ? 'Guest' : txt;
+  el.className='conn '+cls+(role==='github'?' id':'');
+  $('connLabel').textContent=label;
+  const av=$('myAvatar');
+  if(role==='github' && ghLogin) av.src='https://github.com/'+encodeURIComponent(ghLogin)+'.png?size=36';
+  else av.removeAttribute('src');
   el.style.cursor = cloud ? 'pointer' : 'default';
-  el.title = cloud ? tip+' · Click to manage sign-in.' : tip;
+  el.title = cloud ? (txt+' — '+tip+' · Click to manage sign-in.') : tip;
   const led=$('hubLed'), hub=$('hub');
   if(led) led.className='led '+cls;
   if(hub) hub.title=txt+' — '+tip;
@@ -1485,7 +1530,6 @@ async function publishImage(){
 }
 $('repoRefresh').onclick=loadRepoList;
 $('repoImgSelect').onchange=()=>{ const p=$('repoImgSelect').value; if(p){ beginNewWorkspace(); loadRepoImage(p); } };
-$('repoPublish').onclick=publishImage;
 $('ghToken').value=localStorage.getItem('mcmp_gh_token')||'';
 $('ghToken').oninput=()=>localStorage.setItem('mcmp_gh_token',$('ghToken').value);
 
@@ -1494,13 +1538,15 @@ let unsubscribeWs=null;
 function beginNewWorkspace(){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
-  currentWsId=''; $('wsSelect').value=''; updateConn();
+  currentWsId=''; currentWsOwner=''; $('wsSelect').value='';
+  localStorage.removeItem('mcmp_last_ws'); updateWsTitle(''); applyRoleUI(); updateConn();
 }
 async function openWorkspace(id){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
   currentWsId=id;
-  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; if(cloud) cloud.joinPresence(''); updateConn(); return; }
+  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; localStorage.removeItem('mcmp_last_ws'); currentWsOwner=''; updateWsTitle(''); if(cloud) cloud.joinPresence(''); applyRoleUI(); updateConn(); return; }
+  localStorage.setItem('mcmp_last_ws', id);
   if(cloud){
     unsubscribeWs = cloud.subscribe(id, w=>{ if(w) applyWorkspace(w); });
     cloud.joinPresence(id);
@@ -1513,10 +1559,11 @@ async function openWorkspace(id){
 const GUESTMSG='Sign in with GitHub to edit (guests are read-only).';
 async function saveAsWorkspace(){
   if(!canWrite()){ setWsStatus(GUESTMSG); return; }
-  const name=prompt('Workspace name:', captureWorkspace().name); if(name===null) return;
-  const id=genId(); currentWsId=id;
+  const name=prompt('Name this workspace:', captureWorkspace().name); if(name===null) return;
+  const id=genId(); currentWsId=id; currentWsOwner = cloud ? ghLogin : '';   // creator
+  localStorage.setItem('mcmp_last_ws', id);
   await backend().save(id, captureWorkspace(name.trim()||'Untitled'));
-  await refreshWsList(id);
+  await refreshWsList(id); updateWsTitle(name.trim()||'Untitled'); applyRoleUI();
   setWsStatus('Created “'+(name||'Untitled')+'”.');
   if(cloud){ if(unsubscribeWs)unsubscribeWs(); unsubscribeWs=cloud.subscribe(id,w=>{if(w)applyWorkspace(w);}); cloud.joinPresence(id); }
 }
@@ -1528,14 +1575,19 @@ $('wsSave').onclick=async()=>{
 };
 $('wsSaveAs').onclick=saveAsWorkspace;
 $('wsDelete').onclick=async()=>{
-  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
-  if(!currentWsId){ setWsStatus('Nothing to delete.'); return; }
-  if(!confirm('Delete workspace “'+(wsNames[currentWsId]||'')+'”?')) return;
-  await backend().remove(currentWsId); currentWsId=''; await refreshWsList(''); setWsStatus('Deleted.');
+  if(!currentWsId){ setWsStatus('Open a workspace first.'); return; }
+  if(!canDeleteCurrent()){ setWsStatus('Only the creator ('+(currentWsOwner||'?')+') or an admin can delete this.'); return; }
+  const nm=wsNames[currentWsId]||'';
+  const typed=prompt('This permanently deletes “'+nm+'” for everyone.\nType the workspace name to confirm:');
+  if(typed===null) return;
+  if(typed.trim()!==nm){ setWsStatus('Name didn’t match — not deleted.'); return; }
+  await backend().remove(currentWsId);
+  localStorage.removeItem('mcmp_last_ws'); currentWsId=''; currentWsOwner='';
+  await refreshWsList(''); updateWsTitle(''); applyRoleUI(); setWsStatus('Deleted “'+nm+'”.');
 };
-$('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); if(cloud) cloud.updatePresence(); };
+$('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); updateConn(); if(cloud) cloud.updatePresence(); };
 $('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
-$('ingame').onchange=()=>{ ingame=$('ingame').checked; broadcastSel(); renderPeerList(); };
+$('ingame').onclick=()=>{ ingame=!ingame; $('ingame').classList.toggle('on',ingame); broadcastSel(); renderPeerList(); };
 
 /* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
 function broadcastSel(){ if(cloud && canWrite()) cloud.updatePresence(); }
@@ -1594,7 +1646,7 @@ async function initCloud(){
       updatePresence(){
         if(!presRef || !canWrite()) return;
         const s = idle ? null : state.selected;   // idle clears the column
-        db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()});
+        db.set(presRef,{name:userName(),login:(role==='github'?ghLogin:''),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()});
       },
       async signInGitHub(){ captureGhCred(await signInWithPopup(auth, ghProvider())); },
       signInGitHubRedirect(){ return signInWithRedirect(auth, ghProvider()); },  // popup-blocker fallback
@@ -1622,21 +1674,23 @@ async function initCloud(){
 
 /* reacts to Firebase sign-in / sign-out (cloud mode only) */
 async function onAuthChanged(){
-  applyRoleUI(); updateAuthOverlay();
+  applyRoleUI(); updateAuthOverlay(); updateConn();
   if(!role){ $('authOverlay').classList.add('show'); return; }   // need a choice: GitHub or guest
   $('authOverlay').classList.remove('show');
   if(role==='github' && !$('wsName').value){ $('wsName').value=ghLogin; localStorage.setItem('mcmp_username',ghLogin); }
   await refreshWsList();
+  const last=localStorage.getItem('mcmp_last_ws');           // reopen last workspace if it still exists
+  if(last && !currentWsId && wsNames[last]){ openWorkspace(last); }
   updateConn();
 }
-/* sign-in / account panel content adapts to current role; can be opened from the badge */
+/* sign-in / account panel adapts to current role; opened from the badge */
 function updateAuthOverlay(){
-  const t=$('authTitle'), m=$('authMsg'), gh=$('authGithub'), guest=$('authGuest'), so=$('authSignout'), cl=$('authClose');
+  const t=$('authTitle'), m=$('authMsg'), gh=$('authGithub'), guest=$('authGuest'), so=$('authSignout'), cl=$('authClose'), prof=$('authProfile');
   if(!t) return;
-  $('authErr').textContent='';
+  $('authErr').textContent=''; if(prof) prof.style.display = role ? 'block' : 'none';
   if(role==='github'){
-    t.textContent='Signed in';
-    m.innerHTML='Signed in as <b>'+ghLogin+'</b> — full read/write access.';
+    t.textContent='Account';
+    m.innerHTML='Signed in with GitHub as <b>'+ghLogin+'</b> — full read/write.';
     gh.style.display='none'; guest.style.display='none'; so.style.display=''; cl.style.display='';
   } else if(role==='guest'){
     t.textContent='Viewing as guest';
@@ -1655,16 +1709,13 @@ $('authClose') && ($('authClose').onclick=()=>$('authOverlay').classList.remove(
 $('authSignout') && ($('authSignout').onclick=async()=>{ if(cloud) await cloud.signOutUser(); });
 $('authOverlay').onclick=e=>{ if(e.target.id==='authOverlay' && role) $('authOverlay').classList.remove('show'); };
 
-/* enable/disable write controls + identity line per role */
+/* enable/disable controls per role; MC toggle + Upload label + delete permission */
 function applyRoleUI(){
   const guest = cloud && role==='guest';
-  ['wsSave','wsSaveAs','wsDelete','repoPublish'].forEach(id=>{ const b=$(id); if(b) b.disabled=!!guest; });
-  const s=$('authStatus'), btn=$('authBtn');
-  if(!cloud){ if(s) s.textContent=''; if(btn) btn.style.display='none'; return; }
-  if(btn) btn.style.display='';
-  if(role==='github'){ if(s) s.innerHTML=`Signed in as <b>${ghLogin}</b>`; if(btn) btn.textContent='Sign out'; }
-  else if(role==='guest'){ if(s) s.innerHTML='Viewing as <b>guest</b> (read-only)'; if(btn) btn.textContent='Sign in with GitHub'; }
-  else { if(s) s.textContent='Not signed in'; if(btn) btn.textContent='Sign in with GitHub'; }
+  ['wsSave','wsSaveAs'].forEach(id=>{ const b=$(id); if(b) b.disabled=!!guest; });
+  const del=$('wsDelete'); if(del) del.disabled = !canDeleteCurrent();
+  const up=$('loadBtn'); if(up) up.textContent = (cloud && role==='github') ? 'Upload image…' : 'Load image…';
+  const mc=$('ingame'); if(mc) mc.style.display = (cloud && role==='github') ? '' : 'none';
 }
 async function authSignInGitHub(){
   const err=$('authErr'); if(err) err.textContent='';
@@ -1683,35 +1734,59 @@ async function authSignInGitHub(){
     console.error('github sign-in', e);
   }
 }
-$('authBtn') && ($('authBtn').onclick=async()=>{
-  if(!cloud) return;
-  if(role==='github'){ await cloud.signOutUser(); }   // -> onAuthChanged shows the prompt
-  else { authSignInGitHub(); }
-});
 $('authGithub') && ($('authGithub').onclick=authSignInGitHub);
 $('authGuest') && ($('authGuest').onclick=()=>cloud && cloud.signInGuest());
+
+/* online users -> avatar stack in the header (click to expand; click a user to centre their column) */
+function avatarInner(p){
+  const login=p.login||'';
+  if(login) return `<img src="https://github.com/${encodeURIComponent(login)}.png?size=48" alt="">`;
+  return (p.name||'?').trim().charAt(0).toUpperCase()||'?';
+}
 function renderPeerList(){
   updateConn();
-  const mine = (cloud && role) ? (idle?' · <i>you: idle</i>':'')+(ingame?' · <span title="in Minecraft">🎮 you in-game</span>':'') : '';
-  const n=Object.keys(peers).length;
-  if(!n){ $('wsPeers').innerHTML = mine?('<b>You</b>'+mine):''; return; }
-  const list=Object.values(peers).map(p=>{
-    const where = p.idle ? '<i>(idle)</i>' : (p.x!=null?`(col ${p.x})`:'');
-    const game = p.ingame ? ' 🎮' : '';
-    return `<span style="color:${p.color};opacity:${p.idle?0.5:1}">●</span> ${p.name}${game} ${where}`;
-  }).join(' · ');
-  $('wsPeers').innerHTML='<b>Online:</b> '+list+mine;
+  const stack=$('peerStack'); if(!stack) return;
+  const entries=Object.entries(peers);
+  if(!entries.length){ stack.innerHTML=''; $('peerPop').classList.remove('show'); return; }
+  const shown=entries.slice(0,5);
+  stack.innerHTML=shown.map(([uid,p])=>
+    `<span class="peerav ${p.idle?'idle':''}" style="background:${p.color||'#3a404c'}">${avatarInner(p)}${p.ingame?'<span class="mc" title="in Minecraft">🟩</span>':''}</span>`
+  ).join('') + (entries.length>5?`<span class="peerav" style="background:#3a404c">+${entries.length-5}</span>`:'');
+  $('peerPop').innerHTML=entries.map(([uid,p])=>{
+    const where=p.idle?'idle':(p.x!=null?('col '+p.x):'—');
+    return `<div class="prow" data-uid="${uid}"><span class="pav" style="background:${p.color||'#3a404c'}">${avatarInner(p)}</span>`+
+      `<span style="flex:1">${p.name}${p.ingame?' 🟩':''}</span><span class="hint" style="margin:0">${where}</span></div>`;
+  }).join('');
 }
+$('peerStack').onclick=()=>{
+  const pop=$('peerPop'); if(!Object.keys(peers).length){ pop.classList.remove('show'); return; }
+  const r=$('peerStack').getBoundingClientRect();
+  pop.style.left=Math.max(6,Math.min(window.innerWidth-220, r.right-210))+'px'; pop.style.top=(r.bottom+6)+'px';
+  pop.classList.toggle('show');
+};
+$('peerPop').onclick=e=>{
+  const row=e.target.closest('.prow'); if(!row) return;
+  const p=peers[row.dataset.uid]; $('peerPop').classList.remove('show');
+  if(p && p.x!=null && p.y!=null){ if(state.zoom<8){ state.zoom=8; $('zoom').value=8; } centerOn(p.x+0.5,p.y+8); scheduleRender(); }
+};
+document.addEventListener('click',e=>{ if(!e.target.closest('#peerPop,#peerStack')) $('peerPop').classList.remove('show'); });
 
 /* init */
 $('wsName').value=localStorage.getItem('mcmp_username')||'';
 $('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn();
+$('ingame').classList.toggle('on', ingame);
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle('');
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
 loadRepoList();
 applyRoleUI(); noteActivity();
-initCloud().finally(()=>{ if(!cloud) refreshWsList(); });   // cloud mode lists after auth (onAuthChanged)
+initCloud().finally(async()=>{
+  if(!cloud){                                   // local mode: list + reopen last workspace
+    await refreshWsList();
+    const last=localStorage.getItem('mcmp_last_ws');
+    if(last && wsNames[last]) openWorkspace(last);
+  }
+});
 </script>
 </body>
 </html>
