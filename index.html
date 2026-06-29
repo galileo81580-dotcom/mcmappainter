@@ -181,6 +181,16 @@
   .brow button{padding:2px 7px; font-size:11px; line-height:1.2}
   .cclr .crow{display:flex; gap:8px; padding:6px 6px 2px}
   .cclr .crow button{padding:3px 8px; font-size:11px}
+
+  /* connection status badge */
+  .conn{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); padding:3px 10px; border:1px solid var(--line); border-radius:20px; cursor:default; white-space:nowrap}
+  .conn .dot{width:8px; height:8px; border-radius:50%; background:#7a8290; flex:none}
+  .conn.local .dot{background:#7a8290}
+  .conn.ready .dot{background:var(--accent)}
+  .conn.live{color:var(--txt)} .conn.live .dot{background:var(--good); box-shadow:0 0 0 3px rgba(70,196,106,.18)}
+  .conn.err{color:var(--up)} .conn.err .dot{background:var(--up)}
+  .conn.connecting .dot{background:var(--warn); animation:cpulse 1s infinite}
+  @keyframes cpulse{50%{opacity:.25}}
 </style>
 </head>
 <body>
@@ -190,6 +200,7 @@
     <span class="spacer"></span>
     <span class="stat" id="dims"></span>
     <span class="stat" id="zoomstat"></span>
+    <span class="conn local" id="conn"><span class="dot"></span>Local only</span>
   </header>
 
   <aside id="sidebar">
@@ -218,7 +229,18 @@
         </div>
         <input type="file" id="fileInput" accept="image/*" hidden>
         <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Load.</div>
-        <div class="row between"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
+
+        <div class="hint" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">Shared image library (in repo)</div>
+        <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— pick a shared image —</option></select>
+          <button class="sm" id="repoRefresh" title="Refresh list">⟳</button></div>
+        <button class="sm" id="repoPublish" style="width:100%;margin-top:6px">Publish current image to repo…</button>
+        <details style="margin-top:8px">
+          <summary class="hint" style="cursor:pointer">GitHub upload token (for publishing)</summary>
+          <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
+          <div class="hint">Fine-grained token with <b>Contents: Read &amp; write</b> on this repo. Stored only in this browser; never committed. Only needed to publish.</div>
+        </details>
+
+        <div class="row between" style="margin-top:10px"><label>Maps wide</label><input type="number" id="mapsW" min="1" max="32" value="1"></div>
         <div class="row between"><label>Maps tall</label><input type="number" id="mapsH" min="1" max="32" value="1"></div>
         <div class="row between"><label>Fit</label>
           <select id="fit" style="width:120px">
@@ -496,6 +518,9 @@ let baseIdx=null;            // Int16Array W*H -> palette index, -1 empty
 let tintCanvas=document.createElement('canvas');  // highlight overlay 1px/block
 let nearestCache=new Map();
 let peers={};                // uid -> {name,color,x,y} other users' highlighted columns
+let currentImagePath='';     // repo path of the active shared image ('' = local/unshared)
+let lastImageBlob=null, lastImageName='';  // bytes of the last-loaded local image (for publishing)
+let connState='init';        // 'init'|'connecting'|'ok'|'error' — Firebase connection
 
 /* ===== DOM ===== */
 const $=id=>document.getElementById(id);
@@ -936,17 +961,20 @@ window.addEventListener('keydown',e=>{
 });
 
 /* ===== image loading ===== */
-function loadFromSource(img, exact){
+function loadFromSource(img, opts){
+  opts=opts||{};
   srcImage=img;
-  // map size: snap to whole maps from the source (exact for multiples of 128)
-  const guessW=Math.max(1,Math.min(32,Math.round(img.width/128)));
-  const guessH=Math.max(1,Math.min(32,Math.round(img.height/128)));
-  state.mapsW=guessW; state.mapsH=guessH;
-  $('mapsW').value=guessW; $('mapsH').value=guessH;
-  $('srcInfo').textContent=`Source ${img.width}×${img.height}px`;
+  if(!opts.keep){
+    // map size: snap to whole maps from the source (exact for multiples of 128)
+    const guessW=Math.max(1,Math.min(32,Math.round(img.width/128)));
+    const guessH=Math.max(1,Math.min(32,Math.round(img.height/128)));
+    state.mapsW=guessW; state.mapsH=guessH;
+    $('mapsW').value=guessW; $('mapsH').value=guessH;
+    state.skip.clear(); state.done.clear(); state.selected=null; collist.style.display='none';
+  }
+  $('srcInfo').textContent=`Source ${img.width}×${img.height}px`+(currentImagePath?` · ${currentImagePath}`:'');
   $('drop').classList.add('hide');
-  state.skip.clear(); state.done.clear(); state.selected=null; collist.style.display='none';
-  if(exact){
+  if(opts.exact){
     // reproduce the original app exactly: 1:1 nearest mapping, no dithering
     state.fit='stretch';   $('fit').value='stretch';
     state.algo='none';     $('algo').value='none';
@@ -955,6 +983,8 @@ function loadFromSource(img, exact){
     processImage();
     state.zoom=8; $('zoom').value=8; state.panX=0; state.panY=0;   // original opened top-left at 8×
     scheduleRender();
+  } else if(opts.keep){
+    processImage(); scheduleRender();
   } else {
     processImage();
     setTimeout(fitToScreen,0);
@@ -962,16 +992,18 @@ function loadFromSource(img, exact){
 }
 function loadFile(file){
   if(!file || !file.type.startsWith('image/')) return;
+  currentImagePath=''; lastImageBlob=file; lastImageName=file.name;   // local-only until published
   const img=new Image();
-  img.onload=()=>loadFromSource(img);
+  img.onload=()=>{ loadFromSource(img); touchWorkspace(); };
   img.src=URL.createObjectURL(file);
 }
 $('loadBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
 $('sampleBtn').onclick=()=>{
   // the original pre-dithered map art, at the original app's exact settings
+  currentImagePath=''; lastImageBlob=null; lastImageName='sunset-dither.png';
   const img=new Image();
-  img.onload=()=>loadFromSource(img,true);
+  img.onload=()=>loadFromSource(img,{exact:true});
   img.onerror=()=>{ $('srcInfo').textContent='Could not load sample image (examples/sunset-dither.png).'; };
   img.src='examples/sunset-dither.png';
 };
@@ -1167,6 +1199,7 @@ function captureWorkspace(name){
     name: name || (currentWsId ? (wsNames[currentWsId]||'Untitled') : 'Untitled'),
     mapsW:state.mapsW, mapsH:state.mapsH, fit:state.fit, algo:state.algo,
     startX:state.startX, startY:state.startY, colSize:state.colSize,
+    imagePath: currentImagePath||'',
     prefs: JSON.parse(JSON.stringify(prefs)),
     done:[...state.done], skip:[...state.skip],
     updatedAt: Date.now()
@@ -1185,6 +1218,9 @@ function applyWorkspace(w){
   savePrefs(); updateChunk(); applyColSize(); recomputeEnabled(); renderPrefs(); updatePrefStat();
   processImage(); drawMini(); updateShop(); renderColumn();
   applying=false;
+  // load the workspace's shared image (if any, and not already loaded)
+  const want=w.imagePath||'';
+  if(want && want!==currentImagePath){ loadRepoImage(want,{keep:true,noTouch:true}); }
 }
 
 /* ---- storage backends ---- */
@@ -1223,12 +1259,93 @@ function touchWorkspace(){
 }
 function setWsStatus(t){ $('wsStatus').textContent=t; }
 
+/* ---- connection status badge ---- */
+function updateConn(){
+  const el=$('conn'); if(!el) return;
+  let cls,txt,tip;
+  if(!FIREBASE_CONFIG){ cls='local'; txt='Local only'; tip='No cloud configured — workspaces save to this browser only; no live collaboration.'; }
+  else if(connState==='connecting'){ cls='connecting'; txt='Connecting…'; tip='Connecting to the cloud…'; }
+  else if(connState==='error'||!cloud){ cls='err'; txt='Cloud offline'; tip='Could not reach the cloud — working locally. Your changes are NOT shared.'; }
+  else if(currentWsId){ const n=Object.keys(peers).length; cls='live'; txt=n?`Live · ${n+1} online`:'Live · just you'; tip='Connected to the shared workspace; edits and highlighted columns sync live.'; }
+  else { cls='ready'; txt='Cloud ready'; tip='Connected to the cloud. Open or save a workspace to start collaborating.'; }
+  el.className='conn '+cls; el.innerHTML='<span class="dot"></span>'+txt; el.title=tip;
+}
+
+/* ---- shared image library (GitHub repo) ---- */
+const REPO=(()=>{
+  const h=location.hostname, seg=location.pathname.split('/').filter(Boolean);
+  if(h.endsWith('github.io')) return {owner:h.split('.')[0], name:seg[0]||'mcmappainter', branch:'main', dir:'images'};
+  return {owner:'galileo81580-dotcom', name:'mcmappainter', branch:'main', dir:'images'};   // fallback for local dev
+})();
+const rawUrl=path=>`https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${path}`;
+const blobToB64=blob=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); });
+
+async function loadRepoList(){
+  const sel=$('repoImgSelect');
+  try{
+    const r=await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}?ref=${REPO.branch}`);
+    if(r.status===404){ sel.innerHTML='<option value="">— no shared images yet —</option>'; return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const items=(await r.json()).filter(f=>f.type==='file' && /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name));
+    sel.innerHTML='<option value="">— pick a shared image —</option>'+
+      items.map(f=>`<option value="${f.path}">${f.name}</option>`).join('');
+    sel.value=currentImagePath||'';
+  }catch(e){ sel.innerHTML='<option value="">— list unavailable —</option>'; }
+}
+function loadRepoImage(path, opts){
+  opts=opts||{};
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>{
+    currentImagePath=path; lastImageBlob=null; lastImageName=path.split('/').pop();
+    loadFromSource(img, opts.keep?{keep:true}:undefined);
+    $('repoImgSelect').value=path;
+    if(!opts.noTouch) touchWorkspace();
+  };
+  img.onerror=()=>setWsStatus('Could not load shared image: '+path);
+  img.src=rawUrl(path);
+}
+async function publishImage(){
+  const token=($('ghToken').value||'').trim();
+  if(!token){ setWsStatus('Enter a GitHub token (Image ▸ GitHub upload token) to publish.'); return; }
+  localStorage.setItem('mcmp_gh_token',token);
+  if(!srcImage){ setWsStatus('Load an image first.'); return; }
+  let blob=lastImageBlob, defName=lastImageName||'image.png';
+  if(!blob){
+    blob=await new Promise(r=>{ const c=document.createElement('canvas');
+      c.width=srcImage.naturalWidth||srcImage.width; c.height=srcImage.naturalHeight||srcImage.height;
+      c.getContext('2d').drawImage(srcImage,0,0); c.toBlob(r,'image/png'); });
+    defName=defName.replace(/\.\w+$/,'')+'.png';
+  }
+  let name=prompt('Publish to repo as  '+REPO.dir+'/…', defName.replace(/[^\w.\-]+/g,'_'));
+  if(!name) return;
+  name=name.replace(/[^\w.\-]+/g,'_');
+  const api=`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}/${encodeURIComponent(name)}`;
+  const headers={Authorization:'Bearer '+token, Accept:'application/vnd.github+json'};
+  setWsStatus('Publishing '+name+'…');
+  try{
+    let sha; const g=await fetch(api+'?ref='+REPO.branch,{headers}); if(g.ok){ sha=(await g.json()).sha; }
+    const content=await blobToB64(blob);
+    const res=await fetch(api,{method:'PUT',headers,
+      body:JSON.stringify({message:'Add map-art image '+name, content, branch:REPO.branch, sha})});
+    if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,140)); }
+    currentImagePath=REPO.dir+'/'+name; lastImageBlob=blob; lastImageName=name;
+    $('srcInfo').textContent=`Source ${srcImage.width}×${srcImage.height}px · ${currentImagePath}`;
+    setWsStatus('Published ✓ → '+currentImagePath+(currentWsId?' (saved to workspace)':' — Save the workspace to share it.'));
+    await loadRepoList(); $('repoImgSelect').value=currentImagePath; touchWorkspace();
+  }catch(e){ setWsStatus('Publish failed: '+e.message); }
+}
+$('repoRefresh').onclick=loadRepoList;
+$('repoImgSelect').onchange=()=>{ const p=$('repoImgSelect').value; if(p) loadRepoImage(p); };
+$('repoPublish').onclick=publishImage;
+$('ghToken').value=localStorage.getItem('mcmp_gh_token')||'';
+$('ghToken').oninput=()=>localStorage.setItem('mcmp_gh_token',$('ghToken').value);
+
 let unsubscribeWs=null;
 async function openWorkspace(id){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
   currentWsId=id;
-  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; if(cloud) cloud.joinPresence(''); return; }
+  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; if(cloud) cloud.joinPresence(''); updateConn(); return; }
   if(cloud){
     unsubscribeWs = cloud.subscribe(id, w=>{ if(w) applyWorkspace(w); });
     cloud.joinPresence(id);
@@ -1236,6 +1353,7 @@ async function openWorkspace(id){
   } else {
     const w=await backend().load(id); applyWorkspace(w); setWsStatus('Loaded (local).');
   }
+  updateConn();
 }
 async function saveAsWorkspace(){
   const name=prompt('Workspace name:', captureWorkspace().name); if(name===null) return;
@@ -1265,7 +1383,8 @@ function broadcastSel(){ if(cloud) cloud.updatePresence(); }
 
 /* ---- Firebase cloud backend (loaded only when configured) ---- */
 async function initCloud(){
-  if(!FIREBASE_CONFIG){ setWsStatus('Local only. Add a Firebase config to share & collaborate.'); return; }
+  if(!FIREBASE_CONFIG){ connState='init'; setWsStatus('Local only. Add a Firebase config to share & collaborate.'); updateConn(); return; }
+  connState='connecting'; updateConn();
   try{
     const V='https://www.gstatic.com/firebasejs/10.12.0/';
     const [{initializeApp},{getAuth,signInAnonymously,onAuthStateChanged},fs,db]=await Promise.all([
@@ -1308,12 +1427,13 @@ async function initCloud(){
         db.set(presRef,{name:userName(),color:userColor(),x:s?s.x:null,y:s?s.y:null,ts:Date.now()});
       }
     };
-    setWsStatus('Connected to cloud ✓');
+    connState='ok'; setWsStatus('Connected to cloud ✓'); updateConn();
   }catch(e){
-    cloud=null; setWsStatus('Cloud unavailable ('+e.message+'); using local.');
+    cloud=null; connState='error'; setWsStatus('Cloud unavailable ('+e.message+'); using local.'); updateConn();
   }
 }
 function renderPeerList(){
+  updateConn();
   const n=Object.keys(peers).length;
   if(!n){ $('wsPeers').textContent=''; return; }
   $('wsPeers').innerHTML='<b>Online:</b> '+Object.values(peers).map(p=>
@@ -1323,9 +1443,10 @@ function renderPeerList(){
 /* init */
 $('wsName').value=localStorage.getItem('mcmp_username')||'';
 $('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize();
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn();
 window.addEventListener('resize',scheduleRender);
 sizeCanvas(); render();
+loadRepoList();
 initCloud().finally(()=>refreshWsList());
 </script>
 </body>
