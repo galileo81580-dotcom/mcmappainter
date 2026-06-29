@@ -75,9 +75,26 @@ Storage and Cloud Functions, which are the only parts that would require the pai
    (Make sure `databaseURL` is present — it appears once Realtime Database is enabled.)
 
 That's it. With a config present, the Workspace dropdown reads/writes to the cloud and everyone
-on the same workspace sees each other's highlighted columns in real time. Without it, the app
-silently falls back to local browser storage. Workspaces store settings + block preferences +
-done/skip progress (not the image), so collaborators load the same source image themselves.
+on the same workspace sees each other's highlighted columns in real time. A **connection badge**
+in the header always shows the current state (Local only / Connecting / Cloud ready / Live ·
+N online / Cloud offline) — the fallback to local is never silent.
+
+### Shared image library (in the repo)
+
+So collaborators load the *identical* source image, images are stored in the repo's
+[`images/`](images/) folder rather than in the database (keeps Firebase on the free tier).
+
+- **Pick** an existing shared image from the dropdown in the *Image* section.
+- **Publish** the current image with *Publish current image to repo…*. This commits it to
+  `images/` via the GitHub Contents API. It needs a **fine-grained personal access token**
+  with *Contents: Read & write* on this repo, entered under *GitHub upload token* — it's kept
+  only in your browser (localStorage) and never committed. Only the person publishing needs a
+  token; everyone else just loads the already-committed images (public, no token).
+- Workspaces store the image's repo **path**, so opening a shared workspace auto-loads its
+  image. Locally-loaded files stay private until you publish them.
+
+This is a low-volume, one-time-ish action (a handful of images), so a PAT is the simplest safe
+approach without standing up an OAuth backend.
 
 ## How it works
 
