@@ -31,6 +31,9 @@
   }
   header h1{font-size:15px; font-weight:600; margin:0; letter-spacing:.2px}
   header h1 .dim{color:var(--muted); font-weight:400}
+  .wsswitch{background:var(--panel2); border:1px solid var(--line); color:var(--txt); font:inherit; font-size:14px; font-weight:600; padding:4px 10px; border-radius:7px; cursor:pointer; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .wsswitch:hover{border-color:var(--accent)}
+  .wsswitch .tchev{color:var(--muted); font-size:11px; margin-left:2px}
   header .spacer{flex:1}
   header .stat{color:var(--muted); font-size:12px}
   header .stat b{color:var(--txt); font-weight:600}
@@ -151,6 +154,7 @@
   .popmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:7px 10px; border-radius:5px; font:inherit; cursor:pointer}
   .popmenu button:hover{background:var(--panel2)}
   .popmenu button:disabled{color:var(--muted); cursor:default; background:none}
+  .popmenu .sep{height:1px; background:var(--line); margin:4px 0}
 
   /* sign-in prompt */
   #authOverlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:210; display:none; align-items:center; justify-content:center; padding:24px}
@@ -270,7 +274,8 @@
 <div class="app">
   <header>
     <button id="sidebarToggle" title="Toggle sidebar">☰</button>
-    <h1>MC Map Painter <span class="dim" id="wsTitle">· untitled</span></h1>
+    <h1>MC Map Painter</h1>
+    <button id="wsTitle" class="wsswitch" title="Switch workspace">· untitled <span class="tchev">▾</span></button>
     <span class="spacer"></span>
     <span class="stat" id="dims"></span>
     <span class="stat" id="zoomstat"></span>
@@ -279,34 +284,15 @@
     <span class="conn local" id="conn"><span class="dot"></span><img class="avatar" id="myAvatar" alt=""><span id="connLabel">Local only</span></span>
   </header>
   <div class="peerpop" id="peerPop"></div>
+  <div class="popmenu" id="wsMenu"></div>
   <div class="popmenu" id="chooseMenu"></div>
+  <input type="file" id="fileInput" accept="image/*" hidden>
 
   <aside id="sidebar">
     <!-- WORKSPACE (image + settings + saved state) -->
     <div class="sec collapsed" data-sec="workspace">
       <div class="head">Workspace <span class="chev">▾</span></div>
       <div class="body">
-
-        <div class="subsec collapsed" data-sub="open">
-          <div class="subhead">Open / create <span class="chev">▾</span></div>
-          <div class="subbody">
-            <label class="tinylbl">Open a saved workspace</label>
-            <div class="row"><select id="wsSelect" style="flex:1"><option value="">(unsaved — local)</option></select>
-              <button class="sm" id="wsDelete" title="Delete this workspace">🗑</button></div>
-
-            <label class="tinylbl">New from an image</label>
-            <div class="splitbtn">
-              <button class="primary" id="loadBtn">Choose image…</button>
-              <button class="primary split" id="chooseMenuBtn" title="Pick a shared image">▾</button>
-            </div>
-            <input type="file" id="fileInput" accept="image/*" hidden>
-            <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Choose.</div>
-
-            <label class="tinylbl">Save</label>
-            <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Make a copy…</button></div>
-            <div class="hint" id="wsStatus"></div>
-          </div>
-        </div>
 
         <div class="subsec collapsed" data-sub="size">
           <div class="subhead">Size &amp; alignment <span class="chev">▾</span></div>
@@ -342,6 +328,15 @@
             <div class="hint" id="prefStat" style="margin-top:6px"></div>
             <label class="tinylbl">Materials list</label>
             <div id="shop"></div>
+          </div>
+        </div>
+
+        <div class="subsec collapsed" data-sub="manage">
+          <div class="subhead">Manage <span class="chev">▾</span></div>
+          <div class="subbody">
+            <div class="btnrow"><button id="wsSaveAs">Make a copy…</button><button id="wsDelete">Delete</button></div>
+            <div class="hint" id="srcInfo"></div>
+            <div class="hint" id="wsStatus"></div>
           </div>
         </div>
 
@@ -1177,17 +1172,16 @@ function loadFromSource(img, opts){
 function loadFile(file){
   if(!file || !file.type.startsWith('image/')) return;
   beginNewWorkspace();                                                // loading an image = a new workspace
-  currentImagePath=''; lastImageBlob=file; lastImageName=file.name;   // local-only until published
+  currentImagePath=''; lastImageBlob=file; lastImageName=file.name;
   const img=new Image();
-  img.onload=()=>{
+  img.onload=async()=>{
     loadFromSource(img);
-    // signed in with GitHub: uploading publishes to the shared repo so others get the same image
-    if(cloud && role==='github'){ setWsStatus('Uploading to shared library…'); publishImage(); }
-    else setWsStatus('Loaded locally — sign in with GitHub to share it.');
+    // GitHub users: publish the file to the shared library, then create the workspace
+    if(cloud && role==='github'){ setWsStatus('Uploading to shared library…'); await publishImage({auto:true}); }
+    newWorkspaceFromCurrentImage();
   };
   img.src=URL.createObjectURL(file);
 }
-$('loadBtn').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
 // drag & drop
 ['dragenter','dragover'].forEach(ev=>main.addEventListener(ev,e=>{e.preventDefault(); main.classList.add('dragover');}));
@@ -1372,7 +1366,7 @@ document.querySelectorAll('.subsec > .subhead').forEach(h=>h.onclick=()=>h.paren
 let currentWsId='';          // '' = unsaved/local working state
 let currentWsOwner='';       // github login of the workspace creator
 const ADMIN_LOGIN='galileo81580-dotcom';
-function updateWsTitle(name){ const t=$('wsTitle'); if(t) t.textContent='· '+(name||'untitled'); }
+function updateWsTitle(name){ const t=$('wsTitle'); if(t) t.innerHTML='· '+((name||'untitled').replace(/</g,'&lt;'))+' <span class="tchev">▾</span>'; }
 function canDeleteCurrent(){ return !cloud || (role==='github' && (currentWsOwner==='' || ghLogin===currentWsOwner || ghLogin===ADMIN_LOGIN)); }
 let cloud=null;              // populated by initCloud() when FIREBASE_CONFIG present
 let myUid='local-'+Math.random().toString(36).slice(2,8);
@@ -1427,15 +1421,31 @@ const localBackend={
 const backend=()=> cloud ? cloud.store : localBackend;
 
 let wsNames={};              // id -> name (for dropdown)
-async function refreshWsList(selId){
-  let items=[]; try{ items=await backend().list(); }catch(e){ items=[]; }
-  wsNames={}; items.forEach(i=>wsNames[i.id]=i.name);
-  const sel=$('wsSelect');
-  const cur = selId!==undefined ? selId : currentWsId;
-  sel.innerHTML='<option value="">(unsaved — '+(cloud?'not shared':'local')+')</option>'+
-    items.sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
-  sel.value=cur||'';
+let wsList=[];                                  // [{id,name}] for the title-bar switcher
+async function refreshWsList(){
+  try{ wsList=await backend().list(); }catch(e){ wsList=[]; }
+  wsList.sort((a,b)=>a.name.localeCompare(b.name));
+  wsNames={}; wsList.forEach(i=>wsNames[i.id]=i.name);
 }
+/* title-bar workspace switcher */
+function openWsMenu(){
+  const m=$('wsMenu');
+  m.innerHTML = wsList.map(w=>
+      `<button data-ws="${w.id}">${w.id===currentWsId?'✓ ':' '}${(w.name||'Untitled').replace(/</g,'&lt;')}</button>`).join('')
+    + (wsList.length?'<div class="sep"></div>':'')
+    + `<button data-ws="__new__"><i>New workspace from image…</i></button>`;
+  const r=$('wsTitle').getBoundingClientRect();
+  m.style.left=Math.max(6,r.left)+'px'; m.style.top=(r.bottom+4)+'px'; m.classList.add('show');
+}
+$('wsTitle').onclick=e=>{ e.stopPropagation(); if($('wsMenu').classList.contains('show')){ $('wsMenu').classList.remove('show'); return; } openWsMenu(); };
+$('wsMenu').addEventListener('click',e=>{
+  e.stopPropagation();
+  const b=e.target.closest('button[data-ws]'); if(!b) return;
+  $('wsMenu').classList.remove('show');
+  if(b.dataset.ws==='__new__'){ openChooseMenu($('wsTitle')); }
+  else openWorkspace(b.dataset.ws);
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('#wsMenu,#wsTitle')) $('wsMenu').classList.remove('show'); });
 
 /* debounced autosave of the active workspace */
 let wsSaveTimer=null;
@@ -1481,32 +1491,50 @@ const REPO=(()=>{
 const rawUrl=path=>`https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${path}`;
 const blobToB64=blob=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); });
 
-/* shared images → dropdown menu on the "Choose image" split button */
+/* "New from image" menu: upload a file, or pick a shared repo image */
 async function buildChooseMenu(){
   const menu=$('chooseMenu');
-  menu.innerHTML='<div class="hint" style="padding:6px 10px">Loading…</div>';
+  const head='<button data-upload="1">⬆ Upload a file…</button><div class="sep"></div>';
+  menu.innerHTML=head+'<div class="hint" style="padding:6px 10px">Loading shared images…</div>';
   try{
     const r=await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}?ref=${REPO.branch}`);
-    if(r.status===404){ menu.innerHTML='<div class="hint" style="padding:6px 10px">No shared images yet.</div>'; return; }
+    if(r.status===404){ menu.innerHTML=head+'<div class="hint" style="padding:6px 10px">No shared images yet.</div>'; return; }
     if(!r.ok) throw new Error('HTTP '+r.status);
     const items=(await r.json()).filter(f=>f.type==='file' && /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name));
-    menu.innerHTML = items.length
+    menu.innerHTML=head+(items.length
       ? items.map(f=>`<button data-path="${f.path}">🖼 ${f.name}</button>`).join('')
-      : '<div class="hint" style="padding:6px 10px">No shared images yet.</div>';
-  }catch(e){ menu.innerHTML='<div class="hint" style="padding:6px 10px">List unavailable.</div>'; }
+      : '<div class="hint" style="padding:6px 10px">No shared images yet.</div>');
+  }catch(e){ menu.innerHTML=head+'<div class="hint" style="padding:6px 10px">List unavailable.</div>'; }
 }
+async function openChooseMenu(anchor){
+  await buildChooseMenu();
+  const r=anchor.getBoundingClientRect(), m=$('chooseMenu');
+  m.style.left=Math.max(6,Math.min(window.innerWidth-220,r.left))+'px'; m.style.top=(r.bottom+4)+'px';
+  m.classList.add('show');
+}
+$('chooseMenu').addEventListener('click',e=>{
+  e.stopPropagation();
+  if(e.target.closest('button[data-upload]')){ $('chooseMenu').classList.remove('show'); $('fileInput').click(); return; }
+  const b=e.target.closest('button[data-path]'); if(!b) return;
+  $('chooseMenu').classList.remove('show');
+  beginNewWorkspace(); loadRepoImage(b.dataset.path);   // onload creates the workspace
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('#chooseMenu')) $('chooseMenu').classList.remove('show'); });
+
 function loadRepoImage(path, opts){
   opts=opts||{};
   const img=new Image(); img.crossOrigin='anonymous';
   img.onload=()=>{
     currentImagePath=path; lastImageBlob=null; lastImageName=path.split('/').pop();
     loadFromSource(img, opts.keep?{keep:true}:undefined);
-    if(!opts.noTouch) touchWorkspace();
+    if(opts.keep||opts.noTouch){ if(!opts.noTouch) touchWorkspace(); }
+    else newWorkspaceFromCurrentImage();                // user picked a shared image -> new workspace
   };
   img.onerror=()=>setWsStatus('Could not load shared image: '+path);
   img.src=rawUrl(path);
 }
-async function publishImage(){
+async function publishImage(opts){
+  opts=opts||{};
   if(cloud && role!=='github'){ setWsStatus(GUESTMSG); return; }
   const token=(localStorage.getItem('mcmp_gh_token')||'').trim();    // OAuth token from GitHub sign-in
   if(!token){ setWsStatus('Sign in with GitHub to publish.'); return; }
@@ -1518,7 +1546,8 @@ async function publishImage(){
       c.getContext('2d').drawImage(srcImage,0,0); c.toBlob(r,'image/png'); });
     defName=defName.replace(/\.\w+$/,'')+'.png';
   }
-  let name=prompt('Add to the shared library as  '+REPO.dir+'/…', defName.replace(/[^\w.\-]+/g,'_'));
+  let name = opts.auto ? defName.replace(/[^\w.\-]+/g,'_')
+                       : prompt('Add to the shared library as  '+REPO.dir+'/…', defName.replace(/[^\w.\-]+/g,'_'));
   if(!name) return;
   name=name.replace(/[^\w.\-]+/g,'_');
   const api=`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}/${encodeURIComponent(name)}`;
@@ -1531,65 +1560,53 @@ async function publishImage(){
       body:JSON.stringify({message:'Add map-art image '+name, content, branch:REPO.branch, sha})});
     if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,140)); }
     currentImagePath=REPO.dir+'/'+name; lastImageBlob=blob; lastImageName=name;
-    $('srcInfo').textContent=`Source ${srcImage.width}×${srcImage.height}px · ${currentImagePath}`;
-    setWsStatus('Image saved to library — “Make a copy…” to keep this workspace.'); touchWorkspace();
+    $('srcInfo').textContent=`Image: ${currentImagePath}`;
   }catch(e){ setWsStatus('Publish failed: '+e.message); }
 }
-$('chooseMenuBtn').onclick=async e=>{
-  e.stopPropagation();
-  await buildChooseMenu();
-  const r=$('chooseMenuBtn').getBoundingClientRect(), m=$('chooseMenu');
-  m.style.left=Math.max(6,Math.min(window.innerWidth-220,r.left))+'px'; m.style.top=(r.bottom+4)+'px';
-  m.classList.add('show');
-};
-$('chooseMenu').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-path]'); if(!b) return;
-  $('chooseMenu').classList.remove('show');
-  beginNewWorkspace(); loadRepoImage(b.dataset.path);
-});
-document.addEventListener('click',e=>{ if(!e.target.closest('#chooseMenu,#chooseMenuBtn')) $('chooseMenu').classList.remove('show'); });
+/* create + persist a workspace immediately (no Save button; changes autosave after) */
+async function createWorkspace(defaultName){
+  if(!canWrite()){ setWsStatus('Sign in with GitHub to save.'); return; }
+  const name=prompt('Name this workspace:', defaultName||'Untitled'); if(name===null) return;
+  const id=genId(); currentWsId=id; currentWsOwner = cloud?ghLogin:'';
+  localStorage.setItem('mcmp_last_ws',id);
+  await backend().save(id, captureWorkspace(name.trim()||defaultName||'Untitled'));
+  await refreshWsList(); updateWsTitle(name.trim()||defaultName||'Untitled'); applyRoleUI();
+  if(cloud){ if(unsubscribeWs)unsubscribeWs(); unsubscribeWs=cloud.subscribe(id,w=>{if(w)applyWorkspace(w);}); cloud.joinPresence(id); }
+  setWsStatus('Created — changes save automatically.'); updateConn();
+}
+function newWorkspaceFromCurrentImage(){
+  const def=(lastImageName||'Map').replace(/\.\w+$/,'');
+  if(canWrite()) createWorkspace(def);
+  else setWsStatus('Loaded locally — sign in with GitHub to save & share.');
+}
 
 let unsubscribeWs=null;
-// detach from any open/saved workspace so the next image load is a fresh workspace
+// detach from any open workspace so the next image load is a fresh one
 function beginNewWorkspace(){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
-  currentWsId=''; currentWsOwner=''; $('wsSelect').value='';
+  currentWsId=''; currentWsOwner='';
   localStorage.removeItem('mcmp_last_ws'); updateWsTitle(''); applyRoleUI(); updateConn();
 }
 async function openWorkspace(id){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
   currentWsId=id;
-  if(!id){ setWsStatus('Working locally (unsaved).'); $('wsSelect').value=''; localStorage.removeItem('mcmp_last_ws'); currentWsOwner=''; updateWsTitle(''); if(cloud) cloud.joinPresence(''); applyRoleUI(); updateConn(); return; }
+  if(!id){ setWsStatus('No workspace open.'); localStorage.removeItem('mcmp_last_ws'); currentWsOwner=''; updateWsTitle(''); if(cloud) cloud.joinPresence(''); applyRoleUI(); updateConn(); return; }
   localStorage.setItem('mcmp_last_ws', id);
   if(cloud){
     unsubscribeWs = cloud.subscribe(id, w=>{ if(w) applyWorkspace(w); });
     cloud.joinPresence(id);
-    setWsStatus('Synced to cloud.');
   } else {
-    const w=await backend().load(id); applyWorkspace(w); setWsStatus('Loaded (local).');
+    const w=await backend().load(id); applyWorkspace(w);
   }
   updateConn();
 }
 const GUESTMSG='Sign in with GitHub to edit (guests are read-only).';
-async function saveAsWorkspace(){
-  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
-  const name=prompt('Name this workspace:', captureWorkspace().name); if(name===null) return;
-  const id=genId(); currentWsId=id; currentWsOwner = cloud ? ghLogin : '';   // creator
-  localStorage.setItem('mcmp_last_ws', id);
-  await backend().save(id, captureWorkspace(name.trim()||'Untitled'));
-  await refreshWsList(id); updateWsTitle(name.trim()||'Untitled'); applyRoleUI();
-  setWsStatus('Created “'+(name||'Untitled')+'”.');
-  if(cloud){ if(unsubscribeWs)unsubscribeWs(); unsubscribeWs=cloud.subscribe(id,w=>{if(w)applyWorkspace(w);}); cloud.joinPresence(id); }
-}
-$('wsSelect').onchange=()=>openWorkspace($('wsSelect').value);
-$('wsSave').onclick=async()=>{
-  if(!canWrite()){ setWsStatus(GUESTMSG); return; }
-  if(!currentWsId) return saveAsWorkspace();
-  await backend().save(currentWsId, captureWorkspace()); setWsStatus('Saved ✓');
+$('wsSaveAs').onclick=()=>{
+  if(!currentWsId){ setWsStatus('Open a workspace first.'); return; }
+  createWorkspace((wsNames[currentWsId]||'Workspace')+' copy');   // duplicate current state under a new name
 };
-$('wsSaveAs').onclick=saveAsWorkspace;
 $('wsDelete').onclick=async()=>{
   if(!currentWsId){ setWsStatus('Open a workspace first.'); return; }
   if(!canDeleteCurrent()){ setWsStatus('Only the creator ('+(currentWsOwner||'?')+') or an admin can delete this.'); return; }
@@ -1728,9 +1745,8 @@ $('authOverlay').onclick=e=>{ if(e.target.id==='authOverlay' && role) $('authOve
 /* enable/disable controls per role; MC toggle + Upload label + delete permission */
 function applyRoleUI(){
   const guest = cloud && role==='guest';
-  ['wsSave','wsSaveAs'].forEach(id=>{ const b=$(id); if(b) b.disabled=!!guest; });
+  const sa=$('wsSaveAs'); if(sa) sa.disabled = !!guest || !currentWsId;
   const del=$('wsDelete'); if(del) del.disabled = !canDeleteCurrent();
-  const up=$('loadBtn'); if(up) up.textContent = 'Choose image…';
   const mc=$('ingame'); if(mc) mc.style.display = (cloud && role==='github') ? '' : 'none';
 }
 async function authSignInGitHub(){
