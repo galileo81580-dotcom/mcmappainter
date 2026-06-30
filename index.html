@@ -36,6 +36,8 @@
   .wsswitch .tchev{color:var(--muted); font-size:11px; margin-left:2px}
   header .spacer{flex:1}
   header .stat{color:var(--muted); font-size:12px}
+  .verbug{font-family:ui-monospace,monospace; font-size:11px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:2px 7px; text-decoration:none; white-space:nowrap}
+  .verbug:hover{color:var(--txt); border-color:var(--accent)}
   header .stat b{color:var(--txt); font-weight:600}
 
   aside{
@@ -161,12 +163,12 @@
   .popmenu .sep{height:1px; background:var(--line); margin:4px 0}
 
   /* sign-in prompt */
-  #authOverlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:210; display:none; align-items:center; justify-content:center; padding:24px}
-  #authOverlay.show{display:flex}
-  #authBox{background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:24px; max-width:380px; text-align:center}
-  #authBox h3{margin:0 0 8px; font-size:17px}
-  #authBox p{color:var(--muted); font-size:13px; line-height:1.55; margin:0 0 18px}
-  #authBox button{width:100%; padding:10px; margin-top:8px}
+  #authOverlay{position:fixed; z-index:210; display:none}
+  #authOverlay.show{display:block}
+  #authBox{background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:14px; width:300px; text-align:left}
+  #authBox h3{margin:0 0 6px; font-size:15px}
+  #authBox p{color:var(--muted); font-size:12px; line-height:1.5; margin:0 0 12px}
+  #authBox button{width:100%; padding:9px; margin-top:8px}
   button:disabled{opacity:.5; cursor:not-allowed}
   button:disabled:hover{border-color:var(--line); color:var(--txt)}
   #collist .rows{padding:6px 12px 12px}
@@ -280,11 +282,10 @@
     <button id="sidebarToggle" title="Toggle sidebar">☰</button>
     <h1>MC Map Painter</h1>
     <button id="wsTitle" class="wsswitch" title="Switch workspace">· untitled <span class="tchev">▾</span></button>
-    <span class="spacer"></span>
-    <span class="stat" id="dims"></span>
     <span class="stat" id="zoomstat"></span>
+    <span class="spacer"></span>
+    <a class="verbug" id="verBug" target="_blank" rel="noopener" title="Current build"></a>
     <div class="peerstack" id="peerStack"></div>
-    <button class="mcbtn" id="ingame" title="Toggle: I'm in Minecraft" style="display:none">🟩</button>
     <span class="conn local" id="conn"><span class="dot"></span><img class="avatar" id="myAvatar" alt=""><span id="connLabel">Local only</span></span>
   </header>
   <div class="peerpop" id="peerPop"></div>
@@ -417,6 +418,7 @@
             <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:150px"></div>
           <div class="row between"><label style="flex:none">Highlight colour</label>
             <input type="color" id="wsColor" value="#4f9dff" style="width:40px;padding:2px"></div>
+          <label class="switch" id="acctMc" style="display:none"><span class="lbl">I'm in Minecraft</span><input type="checkbox" id="ingame"><span class="track"></span></label>
         </div>
         <button class="primary" id="authGithub">Sign in with GitHub</button>
         <button id="authGuest">Continue as guest (read-only)</button>
@@ -743,7 +745,7 @@ function render(){
   ctx.fillStyle='#0e0f12'; ctx.fillRect(0,0,vw,vh);
 
   $('view').classList.toggle('empty', !baseIdx);
-  if(!baseIdx){ $('dims').textContent=''; $('zoomstat').textContent=''; return; }
+  if(!baseIdx){ $('zoomstat').textContent=''; return; }
 
   // visible block range
   const sx0=Math.max(0,Math.floor((-px)/z)), sy0=Math.max(0,Math.floor((-py)/z));
@@ -819,7 +821,6 @@ function render(){
     ctx.strokeRect(px+x*z, py+y*z, z, 16*z);
   }
 
-  $('dims').innerHTML=`<b>${W}×${H}</b> blocks · <b>${state.mapsW}×${state.mapsH}</b> maps`;
   $('zoomstat').innerHTML=`zoom <b>${z}×</b>`;
 }
 
@@ -1637,7 +1638,7 @@ $('wsDelete').onclick=async()=>{
 };
 $('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); updateConn(); if(cloud) cloud.updatePresence(); };
 $('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
-$('ingame').onclick=()=>{ ingame=!ingame; $('ingame').classList.toggle('on',ingame); broadcastSel(); renderPeerList(); };
+$('ingame').onchange=()=>{ ingame=$('ingame').checked; broadcastSel(); renderPeerList(); };
 
 /* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
 function broadcastSel(){ if(cloud && canWrite()) cloud.updatePresence(); }
@@ -1738,6 +1739,8 @@ function updateAuthOverlay(){
   const t=$('authTitle'), m=$('authMsg'), gh=$('authGithub'), guest=$('authGuest'), so=$('authSignout'), cl=$('authClose'), prof=$('authProfile');
   if(!t) return;
   $('authErr').textContent=''; if(prof) prof.style.display = role ? 'block' : 'none';
+  $('acctMc').style.display = role==='github' ? 'flex' : 'none';   // "I'm in Minecraft" only for GitHub users
+  $('ingame').checked = ingame;
   if(role==='github'){
     t.textContent='Account';
     m.innerHTML='Signed in with GitHub as <b>'+ghLogin+'</b> — full read/write.';
@@ -1753,18 +1756,24 @@ function updateAuthOverlay(){
     gh.style.display=''; gh.textContent='Sign in with GitHub'; guest.style.display=''; so.style.display='none'; cl.style.display='none';
   }
 }
-function openAuthOverlay(){ if(!cloud) return; updateAuthOverlay(); $('authOverlay').classList.add('show'); }
-$('conn').onclick=()=>openAuthOverlay();
+function openAuthOverlay(){
+  if(!cloud) return;
+  updateAuthOverlay();
+  const o=$('authOverlay'); o.classList.add('show');
+  const r=$('conn').getBoundingClientRect();
+  o.style.left=Math.max(6,Math.min(window.innerWidth-306, r.right-300))+'px'; o.style.top=(r.bottom+6)+'px';
+}
+$('conn').onclick=e=>{ e.stopPropagation(); if($('authOverlay').classList.contains('show')) $('authOverlay').classList.remove('show'); else openAuthOverlay(); };
 $('authClose') && ($('authClose').onclick=()=>$('authOverlay').classList.remove('show'));
 $('authSignout') && ($('authSignout').onclick=async()=>{ if(cloud) await cloud.signOutUser(); });
-$('authOverlay').onclick=e=>{ if(e.target.id==='authOverlay' && role) $('authOverlay').classList.remove('show'); };
+$('authOverlay').addEventListener('click',e=>e.stopPropagation());   // keep clicks inside from closing it
+document.addEventListener('click',e=>{ if(!e.target.closest('#authOverlay,#conn')) $('authOverlay').classList.remove('show'); });
 
 /* enable/disable controls per role; MC toggle + Upload label + delete permission */
 function applyRoleUI(){
   const guest = cloud && role==='guest';
   const sa=$('wsSaveAs'); if(sa) sa.disabled = !!guest || !currentWsId;
   const del=$('wsDelete'); if(del) del.disabled = !canDeleteCurrent();
-  const mc=$('ingame'); if(mc) mc.style.display = (cloud && role==='github') ? '' : 'none';
 }
 async function authSignInGitHub(){
   const err=$('authErr'); if(err) err.textContent='';
@@ -1820,11 +1829,22 @@ $('peerPop').onclick=e=>{
 };
 document.addEventListener('click',e=>{ if(!e.target.closest('#peerPop,#peerStack')) $('peerPop').classList.remove('show'); });
 
+/* auto version badge — shows the live repo HEAD commit */
+async function loadVersion(){
+  try{
+    const r=await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/commits/${REPO.branch}`);
+    if(!r.ok) throw 0;
+    const d=await r.json(), sha=(d.sha||'').slice(0,7), date=new Date(d.commit.committer.date);
+    const el=$('verBug'); el.textContent='build '+sha; el.href=d.html_url;
+    el.title='Committed '+date.toLocaleString()+' — '+(d.commit.message||'').split('\n')[0];
+  }catch(e){ $('verBug').textContent=''; }
+}
+
 /* init */
 $('wsName').value=localStorage.getItem('mcmp_username')||'';
 $('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
-$('ingame').classList.toggle('on', ingame);
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle('');
+$('ingame').checked = ingame;
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle(''); loadVersion();
 window.addEventListener('resize',scheduleRender);
 $('sidebarToggle').onclick=()=>{ document.querySelector('.app').classList.toggle('sidebar-collapsed'); scheduleRender(); };
 sizeCanvas(); render();
