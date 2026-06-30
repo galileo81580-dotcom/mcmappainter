@@ -339,6 +339,8 @@
           <div class="subhead">Manage <span class="chev">▾</span></div>
           <div class="subbody">
             <div class="btnrow"><button id="wsSaveAs">Make a copy…</button><button id="wsDelete">Delete</button></div>
+            <label class="tinylbl">Export</label>
+            <div class="btnrow"><button id="expPng">Dithered PNG (1×)</button><button id="expView">Current view PNG</button></div>
             <div class="hint" id="srcInfo"></div>
             <div class="hint" id="wsStatus"></div>
           </div>
@@ -358,15 +360,6 @@
         <label class="switch"><span class="lbl">Show minimap / skip-maps</span><input type="checkbox" id="showMini" checked><span class="track"></span></label>
         <div class="row" style="margin-top:10px"><label style="flex:none">Zoom</label><input type="range" id="zoom" min="1" max="32" value="8"></div>
         <button class="sm" id="fitView" style="width:100%">Fit to screen</button>
-      </div>
-    </div>
-
-    <!-- EXPORT -->
-    <div class="sec collapsed" data-sec="export">
-      <div class="head">Export <span class="chev">▾</span></div>
-      <div class="body">
-        <div class="btnrow"><button id="expPng">Dithered PNG (1×)</button></div>
-        <div class="btnrow" style="margin-top:8px"><button id="expView">Current view PNG</button></div>
       </div>
     </div>
 
