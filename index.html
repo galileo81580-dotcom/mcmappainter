@@ -21,6 +21,10 @@
     font-family:'Inter',system-ui,sans-serif; font-size:13px; overflow:hidden;
   }
   .app{display:grid; grid-template-columns:300px 1fr; grid-template-rows:48px 1fr; height:100vh;}
+  .app.sidebar-collapsed{grid-template-columns:0 1fr}
+  .app.sidebar-collapsed aside{display:none}
+  #sidebarToggle{background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:4px 6px; line-height:1}
+  #sidebarToggle:hover{color:var(--txt)}
   header{
     grid-column:1/3; display:flex; align-items:center; gap:14px; padding:0 16px;
     background:var(--panel); border-bottom:1px solid var(--line); z-index:5;
@@ -245,20 +249,27 @@
   .peerpop .pav{width:22px; height:22px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; overflow:hidden}
   .peerpop .pav img{width:100%; height:100%; object-fit:cover}
 
-  /* collapsible sub-sections inside Workspace */
-  .subsec{border:1px solid var(--line); border-radius:8px; margin:8px 0; overflow:hidden; background:var(--bg)}
-  .subsec > .subhead{display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--txt); background:var(--panel2)}
+  /* accordion sub-sections inside Workspace (flat — thin bar, no box) */
+  .subsec{margin:8px 0}
+  .subsec > .subhead{display:flex; align-items:center; gap:8px; padding:4px 8px; cursor:pointer; user-select:none; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--accent); background:rgba(79,157,255,.10); border-radius:5px}
+  .subsec > .subhead:hover{background:rgba(79,157,255,.18)}
   .subsec > .subhead .chev{margin-left:auto; color:var(--muted); transition:transform .15s}
   .subsec.collapsed > .subhead .chev{transform:rotate(-90deg)}
-  .subsec > .subbody{padding:8px 10px}
+  .subsec > .subbody{padding:8px 4px 2px}
   .subsec.collapsed > .subbody{display:none}
   .tinylbl{display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:11px 0 4px}
   .tinylbl:first-child{margin-top:2px}
+
+  /* split "Choose image" button */
+  .splitbtn{display:flex}
+  .splitbtn > #loadBtn{flex:1; border-top-right-radius:0; border-bottom-right-radius:0}
+  .splitbtn > .split{border-top-left-radius:0; border-bottom-left-radius:0; border-left:1px solid rgba(255,255,255,.25); padding:7px 9px; flex:none}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
+    <button id="sidebarToggle" title="Toggle sidebar">☰</button>
     <h1>MC Map Painter <span class="dim" id="wsTitle">· untitled</span></h1>
     <span class="spacer"></span>
     <span class="stat" id="dims"></span>
@@ -268,6 +279,7 @@
     <span class="conn local" id="conn"><span class="dot"></span><img class="avatar" id="myAvatar" alt=""><span id="connLabel">Local only</span></span>
   </header>
   <div class="peerpop" id="peerPop"></div>
+  <div class="popmenu" id="chooseMenu"></div>
 
   <aside id="sidebar">
     <!-- WORKSPACE (image + settings + saved state) -->
@@ -283,16 +295,12 @@
               <button class="sm" id="wsDelete" title="Delete this workspace">🗑</button></div>
 
             <label class="tinylbl">New from an image</label>
-            <div class="btnrow"><button class="primary" id="loadBtn">Upload image…</button></div>
+            <div class="splitbtn">
+              <button class="primary" id="loadBtn">Choose image…</button>
+              <button class="primary split" id="chooseMenuBtn" title="Pick a shared image">▾</button>
+            </div>
             <input type="file" id="fileInput" accept="image/*" hidden>
-            <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Upload.</div>
-            <div class="row"><select id="repoImgSelect" style="flex:1"><option value="">— or pick a shared image —</option></select>
-              <button class="sm" id="repoRefresh" title="Refresh list">⟳</button></div>
-            <details style="margin-top:8px">
-              <summary class="hint" style="cursor:pointer">GitHub upload token (only if not signed in with GitHub)</summary>
-              <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" style="width:100%;margin-top:6px" autocomplete="off">
-              <div class="hint">Token with <b>Contents: Read &amp; write</b> on this repo, stored only in this browser. Signing in with GitHub fills this automatically.</div>
-            </details>
+            <div class="hint" id="srcInfo">No image loaded. Drop a file anywhere, or click Choose.</div>
 
             <label class="tinylbl">Save</label>
             <div class="btnrow"><button id="wsSave">Save</button><button id="wsSaveAs">Make a copy…</button></div>
@@ -1473,17 +1481,19 @@ const REPO=(()=>{
 const rawUrl=path=>`https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${path}`;
 const blobToB64=blob=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); });
 
-async function loadRepoList(){
-  const sel=$('repoImgSelect');
+/* shared images → dropdown menu on the "Choose image" split button */
+async function buildChooseMenu(){
+  const menu=$('chooseMenu');
+  menu.innerHTML='<div class="hint" style="padding:6px 10px">Loading…</div>';
   try{
     const r=await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}?ref=${REPO.branch}`);
-    if(r.status===404){ sel.innerHTML='<option value="">— no shared images yet —</option>'; return; }
+    if(r.status===404){ menu.innerHTML='<div class="hint" style="padding:6px 10px">No shared images yet.</div>'; return; }
     if(!r.ok) throw new Error('HTTP '+r.status);
     const items=(await r.json()).filter(f=>f.type==='file' && /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name));
-    sel.innerHTML='<option value="">— pick a shared image —</option>'+
-      items.map(f=>`<option value="${f.path}">${f.name}</option>`).join('');
-    sel.value=currentImagePath||'';
-  }catch(e){ sel.innerHTML='<option value="">— list unavailable —</option>'; }
+    menu.innerHTML = items.length
+      ? items.map(f=>`<button data-path="${f.path}">🖼 ${f.name}</button>`).join('')
+      : '<div class="hint" style="padding:6px 10px">No shared images yet.</div>';
+  }catch(e){ menu.innerHTML='<div class="hint" style="padding:6px 10px">List unavailable.</div>'; }
 }
 function loadRepoImage(path, opts){
   opts=opts||{};
@@ -1491,7 +1501,6 @@ function loadRepoImage(path, opts){
   img.onload=()=>{
     currentImagePath=path; lastImageBlob=null; lastImageName=path.split('/').pop();
     loadFromSource(img, opts.keep?{keep:true}:undefined);
-    $('repoImgSelect').value=path;
     if(!opts.noTouch) touchWorkspace();
   };
   img.onerror=()=>setWsStatus('Could not load shared image: '+path);
@@ -1499,10 +1508,9 @@ function loadRepoImage(path, opts){
 }
 async function publishImage(){
   if(cloud && role!=='github'){ setWsStatus(GUESTMSG); return; }
-  const token=($('ghToken').value||'').trim();
-  if(!token){ setWsStatus('Sign in with GitHub, or paste a token, to publish.'); return; }
-  localStorage.setItem('mcmp_gh_token',token);
-  if(!srcImage){ setWsStatus('Load an image first.'); return; }
+  const token=(localStorage.getItem('mcmp_gh_token')||'').trim();    // OAuth token from GitHub sign-in
+  if(!token){ setWsStatus('Sign in with GitHub to publish.'); return; }
+  if(!srcImage){ setWsStatus('Choose an image first.'); return; }
   let blob=lastImageBlob, defName=lastImageName||'image.png';
   if(!blob){
     blob=await new Promise(r=>{ const c=document.createElement('canvas');
@@ -1510,7 +1518,7 @@ async function publishImage(){
       c.getContext('2d').drawImage(srcImage,0,0); c.toBlob(r,'image/png'); });
     defName=defName.replace(/\.\w+$/,'')+'.png';
   }
-  let name=prompt('Publish to repo as  '+REPO.dir+'/…', defName.replace(/[^\w.\-]+/g,'_'));
+  let name=prompt('Add to the shared library as  '+REPO.dir+'/…', defName.replace(/[^\w.\-]+/g,'_'));
   if(!name) return;
   name=name.replace(/[^\w.\-]+/g,'_');
   const api=`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.dir}/${encodeURIComponent(name)}`;
@@ -1524,14 +1532,22 @@ async function publishImage(){
     if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,140)); }
     currentImagePath=REPO.dir+'/'+name; lastImageBlob=blob; lastImageName=name;
     $('srcInfo').textContent=`Source ${srcImage.width}×${srcImage.height}px · ${currentImagePath}`;
-    setWsStatus('Published ✓ → '+currentImagePath+(currentWsId?' (saved to workspace)':' — Save the workspace to share it.'));
-    await loadRepoList(); $('repoImgSelect').value=currentImagePath; touchWorkspace();
+    setWsStatus('Image saved to library — “Make a copy…” to keep this workspace.'); touchWorkspace();
   }catch(e){ setWsStatus('Publish failed: '+e.message); }
 }
-$('repoRefresh').onclick=loadRepoList;
-$('repoImgSelect').onchange=()=>{ const p=$('repoImgSelect').value; if(p){ beginNewWorkspace(); loadRepoImage(p); } };
-$('ghToken').value=localStorage.getItem('mcmp_gh_token')||'';
-$('ghToken').oninput=()=>localStorage.setItem('mcmp_gh_token',$('ghToken').value);
+$('chooseMenuBtn').onclick=async e=>{
+  e.stopPropagation();
+  await buildChooseMenu();
+  const r=$('chooseMenuBtn').getBoundingClientRect(), m=$('chooseMenu');
+  m.style.left=Math.max(6,Math.min(window.innerWidth-220,r.left))+'px'; m.style.top=(r.bottom+4)+'px';
+  m.classList.add('show');
+};
+$('chooseMenu').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-path]'); if(!b) return;
+  $('chooseMenu').classList.remove('show');
+  beginNewWorkspace(); loadRepoImage(b.dataset.path);
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('#chooseMenu,#chooseMenuBtn')) $('chooseMenu').classList.remove('show'); });
 
 let unsubscribeWs=null;
 // detach from any open/saved workspace so the next image load is a fresh workspace
@@ -1609,7 +1625,7 @@ async function initCloud(){
     function captureGhCred(res){
       if(!res) return;
       const cred=GithubAuthProvider.credentialFromResult(res);
-      if(cred && cred.accessToken){ localStorage.setItem('mcmp_gh_token',cred.accessToken); $('ghToken').value=cred.accessToken; }
+      if(cred && cred.accessToken){ localStorage.setItem('mcmp_gh_token',cred.accessToken); }
       const info=getAdditionalUserInfo(res); if(info && info.username){ ghLogin=info.username; localStorage.setItem('mcmp_gh_login',ghLogin); }
     }
     try{ captureGhCred(await getRedirectResult(auth)); }catch(e){ console.warn('redirect result',e); }
@@ -1714,7 +1730,7 @@ function applyRoleUI(){
   const guest = cloud && role==='guest';
   ['wsSave','wsSaveAs'].forEach(id=>{ const b=$(id); if(b) b.disabled=!!guest; });
   const del=$('wsDelete'); if(del) del.disabled = !canDeleteCurrent();
-  const up=$('loadBtn'); if(up) up.textContent = (cloud && role==='github') ? 'Upload image…' : 'Load image…';
+  const up=$('loadBtn'); if(up) up.textContent = 'Choose image…';
   const mc=$('ingame'); if(mc) mc.style.display = (cloud && role==='github') ? '' : 'none';
 }
 async function authSignInGitHub(){
@@ -1777,8 +1793,8 @@ $('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
 $('ingame').classList.toggle('on', ingame);
 recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle('');
 window.addEventListener('resize',scheduleRender);
+$('sidebarToggle').onclick=()=>{ document.querySelector('.app').classList.toggle('sidebar-collapsed'); scheduleRender(); };
 sizeCanvas(); render();
-loadRepoList();
 applyRoleUI(); noteActivity();
 initCloud().finally(async()=>{
   if(!cloud){                                   // local mode: list + reopen last workspace
