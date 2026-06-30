@@ -128,7 +128,7 @@
   #collist .dash{flex:1; min-width:0; display:grid; grid-template-columns:auto 1fr; column-gap:10px; row-gap:3px; align-items:baseline}
   #collist .dash .lab{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap}
   #collist .dash .val{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; line-height:1.05}
-  #collist .dash input.val{width:100%; background:transparent; border:1px solid transparent; color:var(--txt); padding:0 2px; border-radius:4px; font-family:inherit; cursor:text}
+  #collist .dash input.val{width:62px; justify-self:end; background:transparent; border:1px solid transparent; color:var(--txt); padding:0 3px; border-radius:4px; font-family:inherit; cursor:text}
   #collist .dash input.val:hover{border-color:var(--line)}
   #collist .dash input.val:focus{outline:none; border-color:var(--accent); background:var(--bg)}
   #collist .dash.reject input.val{color:var(--up); border-color:var(--up)}
@@ -452,6 +452,8 @@
 
 <script>
 "use strict";
+/* build info — stamped by the Pages deploy workflow; "dev" when run unbuilt */
+const BUILD = /*BUILD*/ {version:"dev",sha:"local",url:"#",date:""};
 /* ===== Firebase config — paste your project's web config object here to enable
    shared cloud workspaces + live multi-user presence. Leave null for local-only.
    (Firebase console → Project settings → Your apps → SDK setup → Config) ===== */
@@ -1050,7 +1052,17 @@ function applyDashEdit(){
   state.selected={x:bx,y:yTop}; noteActivity();
   centerOn(bx+0.5,yTop+8); renderColumn(); scheduleRender(); broadcastSel();
 }
+const selectAllSoon=el=>{ if(el) setTimeout(()=>{ try{ el.select(); }catch(_){} },0); };  // defer past the browser's focus caret placement
 $('chDash').addEventListener('change', applyDashEdit);
+$('chDash').addEventListener('focusin', e=>{ if(e.target.classList.contains('val')) selectAllSoon(e.target); });
+$('chDash').addEventListener('keydown', e=>{
+  if(e.key!=='Enter' || !e.target.classList.contains('val')) return;
+  e.preventDefault();
+  const order=['dashCol','dashRow','dashSec'], i=order.indexOf(e.target.id);
+  applyDashEdit();                                  // commit (rebuilds the inputs)
+  const next=order[i+1] && $(order[i+1]);
+  if(next){ next.focus(); selectAllSoon(next); } else if($(e.target.id)) $(e.target.id).blur();
+});
 
 /* column-list window: size controls + draggable */
 function applyColSize(){ collist.style.setProperty('--cs', state.colSize.toFixed(2)); }
@@ -1829,15 +1841,12 @@ $('peerPop').onclick=e=>{
 };
 document.addEventListener('click',e=>{ if(!e.target.closest('#peerPop,#peerStack')) $('peerPop').classList.remove('show'); });
 
-/* auto version badge — shows the live repo HEAD commit */
-async function loadVersion(){
-  try{
-    const r=await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/commits/${REPO.branch}`);
-    if(!r.ok) throw 0;
-    const d=await r.json(), sha=(d.sha||'').slice(0,7), date=new Date(d.commit.committer.date);
-    const el=$('verBug'); el.textContent='build '+sha; el.href=d.html_url;
-    el.title='Committed '+date.toLocaleString()+' — '+(d.commit.message||'').split('\n')[0];
-  }catch(e){ $('verBug').textContent=''; }
+/* version badge — stamped into BUILD at deploy time */
+function loadVersion(){
+  const el=$('verBug'); if(!el) return;
+  el.textContent=BUILD.version;
+  el.href=BUILD.url||'#';
+  el.title='Build '+BUILD.version+(BUILD.sha?` (${BUILD.sha})`:'')+(BUILD.date?` · ${BUILD.date}`:'');
 }
 
 /* init */
