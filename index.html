@@ -36,8 +36,8 @@
   .wsswitch .tchev{color:var(--muted); font-size:11px; margin-left:2px}
   header .spacer{flex:1}
   header .stat{color:var(--muted); font-size:12px}
-  .verbug{font-family:ui-monospace,monospace; font-size:11px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:2px 7px; text-decoration:none; white-space:nowrap}
-  .verbug:hover{color:var(--txt); border-color:var(--accent)}
+  .verbug{font-family:ui-monospace,monospace; font-size:10px; color:var(--muted); opacity:.6; text-decoration:none; white-space:nowrap}
+  .verbug:hover{opacity:1; text-decoration:underline}
   header .stat b{color:var(--txt); font-weight:600}
 
   aside{
@@ -128,7 +128,7 @@
   #collist .dash{flex:1; min-width:0; display:grid; grid-template-columns:auto 1fr; column-gap:10px; row-gap:3px; align-items:baseline}
   #collist .dash .lab{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap}
   #collist .dash .val{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; line-height:1.05}
-  #collist .dash input.val{width:62px; justify-self:end; background:transparent; border:1px solid transparent; color:var(--txt); padding:0 3px; border-radius:4px; font-family:inherit; cursor:text}
+  #collist .dash input.val{width:82px; justify-self:end; background:transparent; border:1px solid transparent; color:var(--txt); padding:0 3px; border-radius:4px; font-family:inherit; cursor:text}
   #collist .dash input.val:hover{border-color:var(--line)}
   #collist .dash input.val:focus{outline:none; border-color:var(--accent); background:var(--bg)}
   #collist .dash.reject input.val{color:var(--up); border-color:var(--up)}
@@ -169,6 +169,10 @@
   #authBox h3{margin:0 0 6px; font-size:15px}
   #authBox p{color:var(--muted); font-size:12px; line-height:1.5; margin:0 0 12px}
   #authBox button{width:100%; padding:9px; margin-top:8px}
+  .colorgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:6px 0 4px}
+  .colorgrid .csw{width:100%; aspect-ratio:1; border-radius:6px; cursor:pointer; border:2px solid transparent; box-sizing:border-box}
+  .colorgrid .csw:hover{border-color:rgba(255,255,255,.5)}
+  .colorgrid .csw.sel{border-color:#fff; box-shadow:0 0 0 2px var(--accent)}
   button:disabled{opacity:.5; cursor:not-allowed}
   button:disabled:hover{border-color:var(--line); color:var(--txt)}
   #collist .rows{padding:6px 12px 12px}
@@ -416,8 +420,9 @@
         <div id="authProfile" style="display:none; text-align:left; margin:6px 0 12px">
           <div class="row between"><label style="flex:none">Display name</label>
             <input type="text" id="wsName" maxlength="20" placeholder="name" style="width:150px"></div>
-          <div class="row between"><label style="flex:none">Highlight colour</label>
-            <input type="color" id="wsColor" value="#4f9dff" style="width:40px;padding:2px"></div>
+          <label style="display:block; font-size:12px; margin-top:8px">Highlight colour</label>
+          <div class="colorgrid" id="wsColorGrid"></div>
+          <input type="hidden" id="wsColor" value="#4f9dff">
           <label class="switch" id="acctMc" style="display:none"><span class="lbl">I'm in Minecraft</span><input type="checkbox" id="ingame"><span class="track"></span></label>
         </div>
         <button class="primary" id="authGithub">Sign in with GitHub</button>
@@ -453,7 +458,7 @@
 <script>
 "use strict";
 /* build info — stamped by the Pages deploy workflow; "dev" when run unbuilt */
-const BUILD = /*BUILD*/ {version:"dev",sha:"local",url:"#",date:""};
+const BUILD = /*BUILD*/ {version:"dev",sha:"local",url:"#",date:"",msg:""};
 /* ===== Firebase config — paste your project's web config object here to enable
    shared cloud workspaces + live multi-user presence. Leave null for local-only.
    (Firebase console → Project settings → Your apps → SDK setup → Config) ===== */
@@ -1404,6 +1409,23 @@ let myUid='local-'+Math.random().toString(36).slice(2,8);
 function genId(){ return 'ws_'+Math.random().toString(36).slice(2,9); }
 function userName(){ return ($('wsName').value||'').trim() || 'Anonymous'; }
 function userColor(){ return $('wsColor').value||'#4f9dff'; }
+// distinct, well-separated highlight colours (kept in-window, no native picker)
+const PRESENCE_COLORS=['#ff5d5d','#ffa94d','#ffd43b','#a9e34b','#51cf66','#20c997','#3bc9db','#4dabf7','#748ffc','#b197fc','#f06595','#e8590c'];
+let colorAuto = localStorage.getItem('mcmp_color_auto')==='1';
+function renderColorGrid(){
+  const g=$('wsColorGrid'); if(!g) return;
+  const cur=(userColor()||'').toLowerCase();
+  g.innerHTML=PRESENCE_COLORS.map(c=>`<span class="csw ${c.toLowerCase()===cur?'sel':''}" data-c="${c}" style="background:${c}" title="${c}"></span>`).join('');
+}
+function setUserColor(hex, auto){
+  colorAuto=!!auto; localStorage.setItem('mcmp_color_auto', auto?'1':'0');
+  $('wsColor').value=hex; localStorage.setItem('mcmp_usercolor',hex);
+  renderColorGrid(); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence();
+}
+function pickUnusedColor(){
+  const used=new Set(Object.values(peers).map(p=>(p.color||'').toLowerCase()));
+  return PRESENCE_COLORS.find(c=>!used.has(c.toLowerCase())) || PRESENCE_COLORS[Math.floor(Math.random()*PRESENCE_COLORS.length)];
+}
 
 function captureWorkspace(name){
   return {
@@ -1649,7 +1671,7 @@ $('wsDelete').onclick=async()=>{
   await refreshWsList(''); updateWsTitle(''); applyRoleUI(); setWsStatus('Deleted “'+nm+'”.');
 };
 $('wsName').oninput=()=>{ localStorage.setItem('mcmp_username',$('wsName').value); updateConn(); if(cloud) cloud.updatePresence(); };
-$('wsColor').oninput=()=>{ localStorage.setItem('mcmp_usercolor',$('wsColor').value); updateBmBtn(); scheduleRender(); if(cloud) cloud.updatePresence(); };
+$('wsColorGrid').addEventListener('click',e=>{ const s=e.target.closest('.csw'); if(s) setUserColor(s.dataset.c, false); });
 $('ingame').onchange=()=>{ ingame=$('ingame').checked; broadcastSel(); renderPeerList(); };
 
 /* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
@@ -1752,7 +1774,7 @@ function updateAuthOverlay(){
   if(!t) return;
   $('authErr').textContent=''; if(prof) prof.style.display = role ? 'block' : 'none';
   $('acctMc').style.display = role==='github' ? 'flex' : 'none';   // "I'm in Minecraft" only for GitHub users
-  $('ingame').checked = ingame;
+  $('ingame').checked = ingame; renderColorGrid();
   if(role==='github'){
     t.textContent='Account';
     m.innerHTML='Signed in with GitHub as <b>'+ghLogin+'</b> — full read/write.';
@@ -1815,6 +1837,8 @@ function avatarInner(p){
 }
 function renderPeerList(){
   updateConn();
+  // auto-assigned colour collides with someone here -> move to an unused one (explicit picks are kept)
+  if(colorAuto){ const used=new Set(Object.values(peers).map(p=>(p.color||'').toLowerCase())); if(used.has((userColor()||'').toLowerCase())) setUserColor(pickUnusedColor(), true); }
   const stack=$('peerStack'); if(!stack) return;
   const entries=Object.entries(peers);
   if(!entries.length){ stack.innerHTML=''; $('peerPop').classList.remove('show'); return; }
@@ -1846,14 +1870,16 @@ function loadVersion(){
   const el=$('verBug'); if(!el) return;
   el.textContent=BUILD.version;
   el.href=BUILD.url||'#';
-  el.title='Build '+BUILD.version+(BUILD.sha?` (${BUILD.sha})`:'')+(BUILD.date?` · ${BUILD.date}`:'');
+  el.title='Build '+BUILD.version+(BUILD.sha?` (${BUILD.sha})`:'')+(BUILD.date?` · ${BUILD.date}`:'')+(BUILD.msg?`\n${BUILD.msg}`:'');
 }
 
 /* init */
 $('wsName').value=localStorage.getItem('mcmp_username')||'';
-$('wsColor').value=localStorage.getItem('mcmp_usercolor')||'#4f9dff';
+const _storedColor=localStorage.getItem('mcmp_usercolor');
+if(_storedColor){ $('wsColor').value=_storedColor; }      // persisted across refresh/relogin
+else { setUserColor(pickUnusedColor(), true); }           // new user -> auto-assign an unused colour
 $('ingame').checked = ingame;
-recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle(''); loadVersion();
+recomputeEnabled(); updateChunk(); updateShop(); updatePrefStat(); applyColSize(); updateConn(); updateBmBtn(); updateWsTitle(''); loadVersion(); renderColorGrid();
 window.addEventListener('resize',scheduleRender);
 $('sidebarToggle').onclick=()=>{ document.querySelector('.app').classList.toggle('sidebar-collapsed'); scheduleRender(); };
 sizeCanvas(); render();

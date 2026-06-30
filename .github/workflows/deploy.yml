@@ -26,14 +26,22 @@ jobs:
           fetch-depth: 0          # full history so the commit count is correct
       - name: Stamp version into index.html
         run: |
-          COUNT=$(git rev-list --count HEAD)
-          SHA=$(git rev-parse --short HEAD)
-          VER="v1.0.$COUNT"
-          URL="https://github.com/${GITHUB_REPOSITORY}/commit/$(git rev-parse HEAD)"
-          DATE=$(date -u +%Y-%m-%d)
-          echo "Stamping $VER ($SHA)"
-          sed -i "s|/\*BUILD\*/ [^;]*|/*BUILD*/ {version:\"$VER\",sha:\"$SHA\",url:\"$URL\",date:\"$DATE\"}|" index.html
-          grep -n "/\*BUILD\*/" index.html | head -1
+          node -e '
+            const fs=require("fs"), cp=require("child_process");
+            const sh=c=>cp.execSync(c).toString().trim();
+            const count=sh("git rev-list --count HEAD");
+            const build={
+              version:"v1.0."+count,
+              sha:sh("git rev-parse --short HEAD"),
+              url:"https://github.com/"+process.env.GITHUB_REPOSITORY+"/commit/"+sh("git rev-parse HEAD"),
+              date:new Date().toISOString().slice(0,10),
+              msg:sh("git log -1 --pretty=%s")
+            };
+            let h=fs.readFileSync("index.html","utf8");
+            h=h.replace(/\/\*BUILD\*\/ [^;]*/, ()=>"/*BUILD*/ "+JSON.stringify(build));
+            fs.writeFileSync("index.html",h);
+            console.log("Stamped", build.version, build.sha);
+          '
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
