@@ -39,7 +39,7 @@
   header .stat b{color:var(--txt); font-weight:600}
 
   aside{
-    grid-row:2; background:var(--panel); border-right:1px solid var(--line);
+    grid-row:2; grid-column:1; background:var(--panel); border-right:1px solid var(--line);
     overflow-y:auto; padding:0 0 40px;
   }
   aside::-webkit-scrollbar{width:10px} aside::-webkit-scrollbar-thumb{background:#3a404c;border-radius:8px}
@@ -96,7 +96,7 @@
   .sw{width:13px; height:13px; border-radius:3px; border:1px solid rgba(255,255,255,.25); flex:none}
 
   /* main viewport */
-  main{grid-row:2; position:relative; overflow:hidden; background:#0e0f12}
+  main{grid-row:2; grid-column:2; position:relative; overflow:hidden; background:#0e0f12}
   #view{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair}
   #view.panning{cursor:grabbing}
   #view.empty{cursor:default}
@@ -126,6 +126,10 @@
   #collist .dash{flex:1; min-width:0; display:grid; grid-template-columns:auto 1fr; column-gap:10px; row-gap:3px; align-items:baseline}
   #collist .dash .lab{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap}
   #collist .dash .val{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; text-align:right; line-height:1.05}
+  #collist .dash input.val{width:100%; background:transparent; border:1px solid transparent; color:var(--txt); padding:0 2px; border-radius:4px; font-family:inherit; cursor:text}
+  #collist .dash input.val:hover{border-color:var(--line)}
+  #collist .dash input.val:focus{outline:none; border-color:var(--accent); background:var(--bg)}
+  #collist .dash.reject input.val{color:var(--up); border-color:var(--up)}
   #collist .dpad{display:grid; grid-template-columns:repeat(3,30px); grid-template-rows:repeat(3,26px); gap:4px; justify-content:center; flex:none}
   #collist .dpad button{padding:0; font-size:12px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:6px}
   #collist .dpad .d-up{grid-area:1/2/2/3} #collist .dpad .d-left{grid-area:2/1/3/2}
@@ -1014,9 +1018,9 @@ function renderColumn(){
   const inChunkX=gx-cx*16;
   $('chTitle').textContent='Column';
   $('chDash').innerHTML=
-    `<span class="lab">Chunk Col X</span><span class="val">${cx}</span>`+
-    `<span class="lab">Chunk Row Z</span><span class="val">${cy}</span>`+
-    `<span class="lab">Sect Col X</span><span class="val">${inChunkX}</span>`;
+    `<span class="lab">Chunk Col X</span><input class="val" id="dashCol" type="text" inputmode="numeric" value="${cx}">`+
+    `<span class="lab">Chunk Row Z</span><input class="val" id="dashRow" type="text" inputmode="numeric" value="${cy}">`+
+    `<span class="lab">Sect Col X</span><input class="val" id="dashSec" type="text" inputmode="numeric" value="${inChunkX}">`;
   let html='<div class="rhead"><span class="i">Z</span><span>block</span></div>';
   for(let r=0;r<16;r++){
     const yy=y+r; if(yy>=state.blocksH) break;
@@ -1033,6 +1037,26 @@ function renderColumn(){
 }
 $('chClose').addEventListener('click',()=>{ state.selected=null; collist.style.display='none'; scheduleRender(); broadcastSel(); });
 collist.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>navColumn(btn.dataset.nav)));
+
+/* editable dashboard: Chunk Col X / Chunk Row Z / Sect Col X */
+// within range -> keep; wrong sign but magnitude valid (map is all one sign) -> flip; else null
+function signFix(v,min,max){ if(v>=min&&v<=max) return v; if(-v>=min&&-v<=max) return -v; return null; }
+function flashReject(){ const d=$('chDash'); d.classList.add('reject'); setTimeout(()=>d.classList.remove('reject'),700); }
+function applyDashEdit(){
+  if(!state.selected) return;
+  let cc=parseInt($('dashCol').value,10), cr=parseInt($('dashRow').value,10), sc=parseInt($('dashSec').value,10);
+  if(isNaN(cc)||isNaN(cr)||isNaN(sc)){ flashReject(); renderColumn(); return; }
+  const cmin=Math.floor(state.startX/16), cmax=Math.floor((state.startX+state.blocksW-1)/16);
+  const rmin=Math.floor(state.startY/16), rmax=Math.floor((state.startY+state.blocksH-1)/16);
+  cc=signFix(cc,cmin,cmax); cr=signFix(cr,rmin,rmax);
+  if(sc<0) sc=-sc;                                   // section index is always 0–15
+  if(cc===null||cr===null||sc>15){ flashReject(); renderColumn(); return; }
+  const bx=cc*16+sc-state.startX, yTop=cr*16-state.startY;
+  if(bx<0||bx>=state.blocksW||yTop<0||yTop>=state.blocksH){ flashReject(); renderColumn(); return; }
+  state.selected={x:bx,y:yTop}; noteActivity();
+  centerOn(bx+0.5,yTop+8); renderColumn(); scheduleRender(); broadcastSel();
+}
+$('chDash').addEventListener('change', applyDashEdit);
 
 /* column-list window: size controls + draggable */
 function applyColSize(){ collist.style.setProperty('--cs', state.colSize.toFixed(2)); }
