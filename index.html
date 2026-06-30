@@ -745,14 +745,23 @@ function sizeCanvas(){
   return {w,h};
 }
 
+function clampPan(vw,vh){
+  // keep the map within the viewport — no panning into empty black space
+  const mapW=state.blocksW*state.zoom, mapH=state.blocksH*state.zoom;
+  const x0=Math.min(0, vw-mapW), x1=Math.max(0, vw-mapW);
+  const y0=Math.min(0, vh-mapH), y1=Math.max(0, vh-mapH);
+  state.panX=Math.max(x0, Math.min(x1, state.panX));
+  state.panY=Math.max(y0, Math.min(y1, state.panY));
+}
 function render(){
   const {w:vw,h:vh}=sizeCanvas();
-  const z=state.zoom, W=state.blocksW, H=state.blocksH, px=state.panX, py=state.panY;
   ctx.clearRect(0,0,vw,vh);
   ctx.fillStyle='#0e0f12'; ctx.fillRect(0,0,vw,vh);
 
   $('view').classList.toggle('empty', !baseIdx);
   if(!baseIdx){ $('zoomstat').textContent=''; return; }
+  clampPan(vw,vh);
+  const z=state.zoom, W=state.blocksW, H=state.blocksH, px=state.panX, py=state.panY;
 
   // visible block range
   const sx0=Math.max(0,Math.floor((-px)/z)), sy0=Math.max(0,Math.floor((-py)/z));
@@ -829,6 +838,25 @@ function render(){
   }
 
   $('zoomstat').innerHTML=`zoom <b>${z}×</b>`;
+  saveViewSoon();
+}
+
+/* per-workspace view memory (zoom + pan + selected column), local to this browser */
+let pendingView=null, viewSaveTimer=null;
+const viewKey=id=>'mcmp_view_'+id;
+function saveViewSoon(){
+  if(!currentWsId || !baseIdx) return;
+  clearTimeout(viewSaveTimer);
+  viewSaveTimer=setTimeout(()=>{
+    try{ localStorage.setItem(viewKey(currentWsId), JSON.stringify({zoom:state.zoom, panX:state.panX, panY:state.panY, sel:state.selected})); }catch(e){}
+  }, 500);
+}
+function applyView(v){
+  if(!v) return;
+  if(v.zoom){ state.zoom=v.zoom; $('zoom').value=v.zoom; }
+  if(typeof v.panX==='number'){ state.panX=v.panX; state.panY=v.panY; }
+  state.selected = v.sel || null;
+  renderColumn();
 }
 
 function drawGrid(vw,vh,sx0,sy0,sx1,sy1){
@@ -1198,7 +1226,9 @@ function loadFromSource(img, opts){
     state.zoom=8; $('zoom').value=8; state.panX=0; state.panY=0;   // original opened top-left at 8×
     scheduleRender();
   } else if(opts.keep){
-    processImage(); scheduleRender();
+    processImage();
+    if(pendingView){ applyView(pendingView); pendingView=null; scheduleRender(); }   // restore remembered view
+    else setTimeout(fitToScreen,0);
   } else {
     processImage();
     setTimeout(fitToScreen,0);
@@ -1637,7 +1667,7 @@ let unsubscribeWs=null;
 function beginNewWorkspace(){
   if(unsubscribeWs){ unsubscribeWs(); unsubscribeWs=null; }
   if(cloud) cloud.leavePresence();
-  currentWsId=''; currentWsOwner='';
+  currentWsId=''; currentWsOwner=''; pendingView=null;
   localStorage.removeItem('mcmp_last_ws'); updateWsTitle(''); applyRoleUI(); updateConn();
 }
 async function openWorkspace(id){
@@ -1646,6 +1676,7 @@ async function openWorkspace(id){
   currentWsId=id;
   if(!id){ setWsStatus('No workspace open.'); localStorage.removeItem('mcmp_last_ws'); currentWsOwner=''; updateWsTitle(''); if(cloud) cloud.joinPresence(''); applyRoleUI(); updateConn(); return; }
   localStorage.setItem('mcmp_last_ws', id);
+  try{ pendingView=JSON.parse(localStorage.getItem(viewKey(id))||'null'); }catch(e){ pendingView=null; }   // remembered zoom/pan/column
   if(cloud){
     unsubscribeWs = cloud.subscribe(id, w=>{ if(w) applyWorkspace(w); });
     cloud.joinPresence(id);
