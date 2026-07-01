@@ -620,6 +620,36 @@ let baseIdx=null;            // Int16Array W*H -> palette index, -1 empty
 let tintCanvas=document.createElement('canvas');  // highlight overlay 1px/block
 let nearestCache=new Map();
 let peers={};                // uid -> {name,color,x,y} other users' highlighted columns
+const _avatars={};           // login -> Image (github avatar), cached for peer cursors
+function avatarImg(login){
+  if(!login) return null;
+  if(!_avatars[login]){
+    const im=new Image(); im.crossOrigin='anonymous';
+    im.onload=()=>scheduleRender(); im.onerror=()=>{ im._failed=true; };
+    im.src='https://github.com/'+encodeURIComponent(login)+'.png?size=48';
+    _avatars[login]=im;
+  }
+  return _avatars[login];
+}
+// a peer's floating badge: github avatar clipped to a circle, else coloured initial
+function drawPeerBadge(cx,cy,r,p){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle=p.color||'#888'; ctx.fill();
+  const im=avatarImg(p.login);
+  if(im && im.complete && im.naturalWidth && !im._failed){
+    ctx.save(); ctx.clip();
+    ctx.drawImage(im,cx-r,cy-r,r*2,r*2);
+    ctx.restore();
+  }else{
+    ctx.fillStyle='#0b0c0f'; ctx.font='700 '+Math.round(r*1.15)+'px Inter,sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(((p.name||'?').trim()[0]||'?').toUpperCase(),cx,cy+0.5);
+  }
+  ctx.lineWidth=2; ctx.strokeStyle=p.color||'#888';
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
 let currentImagePath='';     // repo path of the active shared image ('' = local/unshared)
 let lastImageBlob=null, lastImageName='';  // bytes of the last-loaded local image (for publishing)
 let connState='init';        // 'init'|'connecting'|'ok'|'error' — Firebase connection
@@ -820,12 +850,16 @@ function render(){
     const p=peers[uid]; if(p.x==null||p.y==null) continue;
     ctx.strokeStyle=p.color||'#fff'; ctx.lineWidth=2;
     ctx.strokeRect(px+p.x*z+1, py+p.y*z+1, z-2, 16*z-2);
+    // floating badge (avatar / initial) + name tag above the column top
+    const r=11, colL=px+p.x*z, top=py+p.y*z;
+    const bcx=colL+r, bcy=top-r-4;
     if(p.name){
       ctx.font='600 11px Inter,sans-serif'; const tw=ctx.measureText(p.name).width;
-      ctx.fillStyle=p.color||'#fff'; ctx.fillRect(px+p.x*z, py+p.y*z-15, tw+8, 14);
+      ctx.fillStyle=p.color||'#fff'; ctx.fillRect(bcx+r+3, bcy-7, tw+7, 14);
       ctx.fillStyle='#0b0c0f'; ctx.textAlign='left'; ctx.textBaseline='middle';
-      ctx.fillText(p.name, px+p.x*z+4, py+p.y*z-8);
+      ctx.fillText(p.name, bcx+r+6, bcy);
     }
+    drawPeerBadge(bcx, bcy, r, p);
   }
 
   // bookmarked column (player colour, bolder)
@@ -1531,7 +1565,7 @@ const lsAll =()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }ca
 const lsWrite=m=>{ try{ localStorage.setItem(LS_KEY, JSON.stringify(m)); }catch(e){} };
 const localBackend={
   type:'local',
-  async list(){ const m=lsAll(); return Object.keys(m).map(id=>({id,name:m[id].name})); },
+  async list(){ const m=lsAll(); return Object.keys(m).map(id=>({id,name:m[id].name,imagePath:m[id].imagePath||''})); },
   async load(id){ return lsAll()[id]||null; },
   async save(id,data){ const m=lsAll(); m[id]=data; lsWrite(m); },
   async remove(id){ const m=lsAll(); delete m[id]; lsWrite(m); }
@@ -1699,8 +1733,19 @@ async function createWorkspace(defaultName){
 }
 function newWorkspaceFromCurrentImage(){
   const def=(lastImageName||'Map').replace(/\.\w+$/,'');
-  if(canWrite()) createWorkspace(def);
-  else setWsStatus('Loaded locally — sign in with GitHub to save & share.');
+  if(!canWrite()){ setWsStatus('Loaded locally — sign in with GitHub to save & share.'); return; }
+  // warn (don't block) if this exact image already has a workspace — steer toward joining it
+  if(currentImagePath){
+    const dups=wsList.filter(w=>w.imagePath && w.imagePath===currentImagePath);
+    if(dups.length){
+      const names=dups.map(w=>'“'+w.name+'”').join(', ');
+      const msg='This image already has a workspace ('+names+').\n\n'
+              + 'OK  = create a separate new workspace anyway\n'
+              + 'Cancel = open the existing one instead';
+      if(!confirm(msg)){ openWorkspace(dups[0].id); return; }
+    }
+  }
+  createWorkspace(def);
 }
 
 let unsubscribeWs=null;
@@ -1776,7 +1821,7 @@ async function initCloud(){
     const cloudStore={
       type:'cloud',
       async list(){ const s=await db.get(db.ref(rtdb,'workspaces')); const v=s.val()||{};
-        return Object.keys(v).map(id=>({id,name:(v[id]&&v[id].name)||'Untitled'})); },
+        return Object.keys(v).map(id=>({id,name:(v[id]&&v[id].name)||'Untitled',imagePath:(v[id]&&v[id].imagePath)||''})); },
       async load(id){ const s=await db.get(wsRef(id)); return s.exists()?s.val():null; },
       async save(id,data){ await db.set(wsRef(id),data); },
       async remove(id){ await db.remove(wsRef(id)); }
