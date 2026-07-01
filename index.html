@@ -161,6 +161,7 @@
   .popmenu button:hover{background:var(--panel2)}
   .popmenu button:disabled{color:var(--muted); cursor:default; background:none}
   .popmenu .sep{height:1px; background:var(--line); margin:4px 0}
+  .wscount{color:var(--good); font-size:11px; font-weight:400}
 
   /* sign-in prompt */
   #authOverlay{position:fixed; z-index:210; display:none}
@@ -1463,7 +1464,12 @@ let myUid='local-'+Math.random().toString(36).slice(2,8);
 const sessionId=Math.random().toString(36).slice(2,10);   // distinct per tab -> multiple sessions of one account are separate cursors
 
 function genId(){ return 'ws_'+Math.random().toString(36).slice(2,9); }
-function userName(){ return ($('wsName').value||'').trim() || 'Anonymous'; }
+function userName(){
+  const n=($('wsName').value||'').trim();
+  if(n && n!=='github user') return n;
+  if(role==='github' && ghLogin && ghLogin!=='github user') return ghLogin;
+  return n || 'Anonymous';
+}
 function userColor(){ return $('wsColor').value||'#4f9dff'; }
 // distinct, well-separated highlight colours (kept in-window, no native picker)
 const PRESENCE_COLORS=['#ff5d5d','#ffa94d','#ffd43b','#a9e34b','#51cf66','#20c997','#3bc9db','#4dabf7','#748ffc','#b197fc','#f06595','#e8590c'];
@@ -1539,11 +1545,16 @@ async function refreshWsList(){
 function openWsMenu(){
   const m=$('wsMenu');
   m.innerHTML = wsList.map(w=>
-      `<button data-ws="${w.id}">${w.id===currentWsId?'✓ ':' '}${(w.name||'Untitled').replace(/</g,'&lt;')}</button>`).join('')
+      `<button data-ws="${w.id}">${w.id===currentWsId?'✓ ':' '}${(w.name||'Untitled').replace(/</g,'&lt;')}<span class="wscount" data-c="${w.id}"></span></button>`).join('')
     + (wsList.length?'<div class="sep"></div>':'')
     + `<button data-ws="__new__"><i>New workspace from image…</i></button>`;
   const r=$('wsTitle').getBoundingClientRect();
   m.style.left=Math.max(6,r.left)+'px'; m.style.top=(r.bottom+4)+'px'; m.classList.add('show');
+  // show who's currently in each workspace so people can join the same one
+  if(cloud && cloud.peekPresence) wsList.forEach(w=>cloud.peekPresence(w.id).then(names=>{
+    const el=m.querySelector('.wscount[data-c="'+w.id+'"]');
+    if(el && names.length) el.textContent=' · 🟢 '+names.slice(0,3).join(', ')+(names.length>3?(' +'+(names.length-3)):'');
+  }));
 }
 $('wsTitle').onclick=e=>{ e.stopPropagation(); if($('wsMenu').classList.contains('show')){ $('wsMenu').classList.remove('show'); return; } openWsMenu(); };
 $('wsMenu').addEventListener('click',e=>{
@@ -1800,7 +1811,17 @@ async function initCloud(){
       async signInGitHub(){ captureGhCred(await signInWithPopup(auth, ghProvider())); },
       signInGitHubRedirect(){ return signInWithRedirect(auth, ghProvider()); },  // popup-blocker fallback
       signInGuest(){ return signInAnonymously(auth); },
-      signOutUser(){ return signOut(auth); }
+      signOutUser(){ return signOut(auth); },
+      async peekPresence(id){                       // distinct display names currently in a workspace
+        try{
+          const v=(await db.get(db.ref(rtdb,'presence/'+id))).val()||{}; const names=[];
+          for(const uid in v){ const node=v[uid];
+            if(node && (node.name!==undefined||node.color!==undefined)) names.push(node.name||node.login||'someone');
+            else if(node) for(const sid in node) names.push(node[sid].name||node[sid].login||'someone');
+          }
+          return names;
+        }catch(e){ return []; }
+      }
     };
 
     onAuthStateChanged(auth, u=>{
