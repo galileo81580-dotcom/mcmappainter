@@ -833,7 +833,7 @@ function render(){
   // my selection
   if(state.selected){
     const {x,y}=state.selected;
-    ctx.strokeStyle='rgba(255,230,0,.95)'; ctx.lineWidth=2;
+    ctx.strokeStyle=userColor(); ctx.lineWidth=2;
     ctx.strokeRect(px+x*z, py+y*z, z, 16*z);
   }
 
@@ -1187,13 +1187,38 @@ function navColumn(dir){
   if(x<0||x>=state.blocksW||y<0||y>=state.blocksH) return;
   state.selected={x,y};
   noteActivity();
-  centerOn(x+0.5, y+8);
+  keepSelectionInView();          // move like a cursor; only pan when it would leave the safe area
   renderColumn(); scheduleRender(); broadcastSel();
 }
 function centerOn(bx,by){
   const r=view.getBoundingClientRect();
   state.panX=r.width/2 - bx*state.zoom;
   state.panY=r.height/2 - by*state.zoom;
+}
+// pan only enough to keep the selected column inside the viewport and clear of the
+// column-list popup (plus its ~shadow margin); otherwise leave the map put.
+function keepSelectionInView(){
+  if(!state.selected) return;
+  const r=view.getBoundingClientRect(), vw=r.width, vh=r.height, z=state.zoom, M=26;
+  const colH=Math.min(16, state.blocksH-state.selected.y);
+  let L=state.panX+state.selected.x*z - M, R=state.panX+(state.selected.x+1)*z + M;
+  let T=state.panY+state.selected.y*z - M, B=state.panY+(state.selected.y+colH)*z + M;
+  let dx=0, dy=0;
+  if(L<0) dx=-L; else if(R>vw) dx=vw-R;
+  if(T<0) dy=-T; else if(B>vh) dy=vh-B;
+  // avoid hiding behind the column-list popup (expanded by the shadow margin)
+  if(collist && getComputedStyle(collist).display!=='none'){
+    const cr=collist.getBoundingClientRect();
+    const oL=cr.left-r.left-M, oR=cr.right-r.left+M, oT=cr.top-r.top-M, oB=cr.bottom-r.top+M;
+    const sL=L+dx, sR=R+dx, sT=T+dy, sB=B+dy;
+    if(sR>oL && sL<oR && sB>oT && sT<oB){          // selection would sit under the popup
+      const pushLeft=oL-sR, pushRight=oR-sL;        // shift to clear one side, staying on-screen
+      const canLeft=(sL+pushLeft)>=0, canRight=(sR+pushRight)<=vw;
+      if(canLeft && (!canRight || Math.abs(pushLeft)<=Math.abs(pushRight))) dx+=pushLeft;
+      else if(canRight) dx+=pushRight;             // else popup too wide to clear — leave it
+    }
+  }
+  state.panX+=dx; state.panY+=dy;                   // render() then clamps to map bounds
 }
 window.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
@@ -1435,6 +1460,7 @@ function updateWsTitle(name){ const t=$('wsTitle'); if(t) t.innerHTML='· '+((na
 function canDeleteCurrent(){ return !cloud || (role==='github' && (currentWsOwner==='' || ghLogin===currentWsOwner || ghLogin===ADMIN_LOGIN)); }
 let cloud=null;              // populated by initCloud() when FIREBASE_CONFIG present
 let myUid='local-'+Math.random().toString(36).slice(2,8);
+const sessionId=Math.random().toString(36).slice(2,10);   // distinct per tab -> multiple sessions of one account are separate cursors
 
 function genId(){ return 'ws_'+Math.random().toString(36).slice(2,9); }
 function userName(){ return ($('wsName').value||'').trim() || 'Anonymous'; }
@@ -1749,11 +1775,18 @@ async function initCloud(){
         const listRef=db.ref(rtdb,'presence/'+id);
         this._unsub=db.onValue(listRef,snap=>{
           const val=snap.val()||{}; const next={};
-          for(const uid in val){ if(uid===myUid) continue; next[uid]=val[uid]; }
+          for(const uid in val){
+            const node=val[uid];
+            if(node && (node.name!==undefined || node.color!==undefined)){        // legacy flat node
+              if(uid!==myUid) next[uid]=node;
+            } else if(node && typeof node==='object'){                            // { sessionId: {...} }
+              for(const sid in node){ if(uid===myUid && sid===sessionId) continue; next[uid+'|'+sid]=node[sid]; }
+            }
+          }
           peers=next; renderPeerList(); scheduleRender();
         });
         if(canWrite()){                                  // guests don't broadcast presence
-          presRef=db.ref(rtdb,'presence/'+id+'/'+myUid);
+          presRef=db.ref(rtdb,'presence/'+id+'/'+myUid+'/'+sessionId);   // per-session, still under my uid (rules OK)
           db.onDisconnect(presRef).remove();
           this.updatePresence();
         }
