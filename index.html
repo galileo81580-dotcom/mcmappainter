@@ -162,6 +162,9 @@
   .popmenu button:disabled{color:var(--muted); cursor:default; background:none}
   .popmenu .sep{height:1px; background:var(--line); margin:4px 0}
   .wscount{color:var(--good); font-size:11px; font-weight:400}
+  #toasts{position:fixed; left:50%; top:9px; transform:translateX(-50%); display:flex; flex-direction:column; gap:5px; align-items:center; z-index:40; pointer-events:none}
+  #toasts .toast{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:5px 14px; font-size:12px; color:var(--txt); box-shadow:var(--shadow); opacity:1; transition:opacity 3s ease}
+  #toasts .toast .who{font-weight:600}
 
   /* sign-in prompt */
   #authOverlay{position:fixed; z-index:210; display:none}
@@ -292,6 +295,7 @@
     <a class="verbug" id="verBug" target="_blank" rel="noopener" title="Current build"></a>
     <div class="peerstack" id="peerStack"></div>
     <span class="conn local" id="conn"><span class="dot"></span><img class="avatar" id="myAvatar" alt=""><span id="connLabel">Local only</span></span>
+    <div id="toasts"></div>
   </header>
   <div class="peerpop" id="peerPop"></div>
   <div class="popmenu" id="wsMenu"></div>
@@ -1743,7 +1747,7 @@ $('wsColorGrid').addEventListener('click',e=>{ const s=e.target.closest('.csw');
 $('ingame').onchange=()=>{ ingame=$('ingame').checked; broadcastSel(); renderPeerList(); };
 
 /* broadcast my highlighted column (only GitHub users write presence; guests are read-only) */
-function broadcastSel(){ if(cloud && canWrite()) cloud.updatePresence(); }
+function broadcastSel(){ if(cloud && role) cloud.updatePresence(); }
 
 /* ---- Firebase cloud backend (loaded only when configured) ---- */
 async function initCloud(){
@@ -1784,6 +1788,7 @@ async function initCloud(){
       joinPresence(id){
         if(!id) return;
         const listRef=db.ref(rtdb,'presence/'+id);
+        let firstSnap=true;
         this._unsub=db.onValue(listRef,snap=>{
           const val=snap.val()||{}; const next={};
           for(const uid in val){
@@ -1794,19 +1799,24 @@ async function initCloud(){
               for(const sid in node){ if(uid===myUid && sid===sessionId) continue; next[uid+'|'+sid]=node[sid]; }
             }
           }
+          if(!firstSnap){                                // announce joins/leaves (skip the initial baseline)
+            for(const k in next) if(!(k in peers)) presenceToast((next[k].name||'Someone')+' joined the map painter');
+            for(const k in peers) if(!(k in next)) presenceToast((peers[k].name||'Someone')+' left the map painter');
+          }
+          firstSnap=false;
           peers=next; renderPeerList(); scheduleRender();
         });
-        if(canWrite()){                                  // guests don't broadcast presence
-          presRef=db.ref(rtdb,'presence/'+id+'/'+myUid+'/'+sessionId);   // per-session, still under my uid (rules OK)
-          db.onDisconnect(presRef).remove();
+        if(role){                                        // any signed-in user (incl. guests) broadcasts presence
+          presRef=db.ref(rtdb,'presence/'+id+'/'+myUid+'/'+sessionId);   // per-session, under my own uid (rules: auth.uid===$uid)
+          try{ db.onDisconnect(presRef).remove(); }catch(e){}
           this.updatePresence();
         }
       },
-      leavePresence(){ if(this._unsub){this._unsub();this._unsub=null;} if(presRef){ db.remove(presRef); presRef=null; } peers={}; renderPeerList(); },
+      leavePresence(){ if(this._unsub){this._unsub();this._unsub=null;} if(presRef){ db.remove(presRef).catch(()=>{}); presRef=null; } peers={}; renderPeerList(); },
       updatePresence(){
-        if(!presRef || !canWrite()) return;
+        if(!presRef) return;
         const s = idle ? null : state.selected;   // idle clears the column
-        db.set(presRef,{name:userName(),login:(role==='github'?ghLogin:''),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()});
+        db.set(presRef,{name:userName(),login:(role==='github'?ghLogin:''),color:userColor(),x:s?s.x:null,y:s?s.y:null,idle:!!idle,ingame:!!ingame,ts:Date.now()}).catch(()=>{});
       },
       async signInGitHub(){ captureGhCred(await signInWithPopup(auth, ghProvider())); },
       signInGitHubRedirect(){ return signInWithRedirect(auth, ghProvider()); },  // popup-blocker fallback
@@ -1919,6 +1929,25 @@ function avatarInner(p){
   const login=p.login||'';
   if(login) return `<img src="https://github.com/${encodeURIComponent(login)}.png?size=48" alt="">`;
   return (p.name||'?').trim().charAt(0).toUpperCase()||'?';
+}
+/* join/leave notice in the header: hold 15s, fade over 3s, with a subtle blip */
+let _actx=null;
+function blip(){
+  try{
+    _actx=_actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(_actx.state==='suspended') _actx.resume();
+    const t=_actx.currentTime, o=_actx.createOscillator(), g=_actx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(660,t); o.frequency.exponentialRampToValueAtTime(990,t+0.08);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.04,t+0.015); g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+    o.connect(g); g.connect(_actx.destination); o.start(t); o.stop(t+0.18);
+  }catch(e){}
+}
+function presenceToast(text){
+  const c=$('toasts'); if(!c) return;
+  const el=document.createElement('div'); el.className='toast'; el.textContent=text;
+  c.appendChild(el); blip();
+  setTimeout(()=>{ el.style.opacity='0'; }, 15000);   // hold 15s
+  setTimeout(()=>{ el.remove(); }, 18000);            // then fade over 3s and remove
 }
 function renderPeerList(){
   updateConn();
